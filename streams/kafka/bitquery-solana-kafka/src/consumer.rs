@@ -7,7 +7,7 @@ use crate::{
     // Ensure the path to generated protobuf types is correct based on `lib.rs`
     // If `lib.rs` has `pub mod schemas { include!(...); }`, then `crate::schemas::solana::Message`
     schemas::solana::{BlockMessage, DexParsedBlockMessage, TokenBlockMessage},
-    utils::{compression::decompress_lz4, metrics as sdk_metrics},
+    utils::{decompress_lz4, metrics as sdk_metrics},
 };
 use bytes::Bytes; // For handling protobuf `bytes` fields
 use prost::Message as ProstMessage; // Alias for prost's Message trait

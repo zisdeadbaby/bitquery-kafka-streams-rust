@@ -39,6 +39,7 @@ lru = { workspace = true }
 chrono = { workspace = true }
 once_cell = { workspace = true }
 parking_lot = { workspace = true }
+fastrand = "2.0"
 
 # Logging
 tracing = { workspace = true }
@@ -51,6 +52,7 @@ prost-build = { workspace = true }
 
 [features]
 default = []
+metrics = []
 high-performance = ["jemallocator"]
 
 [dependencies.jemallocator]

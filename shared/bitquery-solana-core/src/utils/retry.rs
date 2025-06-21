@@ -1,11 +1,28 @@
-use crate::{
-    config::RetryConfig,
-    error::{Error as SdkError, Result as SdkResult},
-};
+use crate::error::{Error, Result};
 use std::future::Future;
 use std::time::Duration;
 use tokio::time::sleep;
 use tracing::{warn, debug};
+
+/// Configuration for retry operations
+#[derive(Debug, Clone)]
+pub struct RetryConfig {
+    pub max_retries: usize,
+    pub initial_delay: Duration,
+    pub max_delay: Duration,
+    pub multiplier: f64,
+}
+
+impl Default for RetryConfig {
+    fn default() -> Self {
+        Self {
+            max_retries: 3,
+            initial_delay: Duration::from_millis(100),
+            max_delay: Duration::from_secs(30),
+            multiplier: 2.0,
+        }
+    }
+}
 
 /// Provides a strategy for retrying operations with exponential backoff.
 ///
@@ -47,13 +64,13 @@ impl RetryStrategy {
     /// * `f`: A closure that, when called, returns a new future for the operation.
     ///
     /// # Returns
-    /// A `SdkResult<T>` which is `Ok(T)` if the operation succeeded within the retry limits,
-    /// or an `SdkError::RetryExhausted` if all attempts failed.
-    pub async fn retry<F, Fut, T, E>(&self, operation_name: &str, mut f: F) -> SdkResult<T>
+    /// A `Result<T>` which is `Ok(T)` if the operation succeeded within the retry limits,
+    /// or an `Error::RetryExhausted` if all attempts failed.
+    pub async fn retry<F, Fut, T, E>(&self, operation_name: &str, mut f: F) -> Result<T>
     where
         F: FnMut() -> Fut, // FnMut to allow capturing and modifying mutable state if necessary
-        Fut: Future<Output = Result<T, E>>,
-        E: Into<SdkError> + std::fmt::Debug, // Ensure error can be converted and logged
+        Fut: Future<Output = std::result::Result<T, E>>,
+        E: Into<Error> + std::fmt::Debug, // Ensure error can be converted and logged
     {
         let mut attempts = 0;
         let mut current_delay = self.initial_delay;
@@ -76,19 +93,19 @@ impl RetryStrategy {
                     return Ok(result);
                 }
                 Err(e) => {
-                    let sdk_error: SdkError = e.into();
+                    let error: Error = e.into();
                     if attempts > self.max_retries {
                         warn!(
                             "Operation '{}' failed after {} attempts (max retries reached). Last error: {:?}",
-                            operation_name, attempts, sdk_error
+                            operation_name, attempts, error
                         );
-                        // Wrap the last error in RetryExhausted
-                        return Err(SdkError::retry_exhausted(attempts, sdk_error));
+                        // Return the last error wrapped
+                        return Err(error);
                     }
 
                     warn!(
                         "Operation '{}' failed on attempt {} with error: {:?}. Retrying in {:?}...",
-                        operation_name, attempts, sdk_error, current_delay
+                        operation_name, attempts, error, current_delay
                     );
 
                     sleep(current_delay).await;
@@ -99,7 +116,8 @@ impl RetryStrategy {
                             .min(self.max_delay.as_secs_f64())
                     );
                     // Add jitter to delay to prevent thundering herd
-                    let jitter = current_delay.mul_f64(0.1 * rand::random::<f64>()); // Max 10% jitter
+                    let jitter_factor = 0.1 * fastrand::f64(); // Max 10% jitter
+                    let jitter = Duration::from_secs_f64(current_delay.as_secs_f64() * jitter_factor);
                     current_delay = current_delay.saturating_add(jitter);
                     if current_delay > self.max_delay {
                         current_delay = self.max_delay;
@@ -110,14 +128,7 @@ impl RetryStrategy {
     }
 }
 
-// Required for jitter
-use std::ops::MulF64;
-impl MulF64 for Duration {
-    type Output = Duration;
-    fn mul_f64(self, rhs: f64) -> Duration {
-        Duration::from_secs_f64(self.as_secs_f64() * rhs)
-    }
-}
+
 
 
 #[cfg(test)]

@@ -103,7 +103,6 @@ enum CommitmentLevel {
 }
 
 enum CommitmentLevelV2 {
-  option allow_alias = true;
   PROCESSED_V2 = 0;
   CONFIRMED_V2 = 1;
   FINALIZED_V2 = 2;
@@ -112,9 +111,10 @@ enum CommitmentLevelV2 {
 
 
 enum SlotStatus {
+  option allow_alias = true;
   SLOT_STATUS_UNSPECIFIED = 0;
-  PROCESSED = 1;
-  CONFIRMED = 2;
-  ROOTED =3; // Typically finalized means rooted
-  FINALIZED = 3; // Alias for ROOTED
+  SLOT_PROCESSED = 1;
+  SLOT_CONFIRMED = 2;
+  SLOT_ROOTED = 3; // Typically finalized means rooted
+  SLOT_FINALIZED = 3; // Alias for ROOTED
 }

@@ -56,7 +56,7 @@ impl Drop for Timer {
     /// Calculates the elapsed time since creation and records it as a histogram metric
     /// if the "metrics" feature is enabled.
     fn drop(&mut self) {
-        let duration = self.start.elapsed();
+        let _duration = self.start.elapsed();
         #[cfg(feature = "metrics")]
         {
             // The `metrics::histogram!` macro registers and records the value.
