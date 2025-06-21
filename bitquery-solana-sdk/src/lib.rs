@@ -3,13 +3,10 @@
 //! High-performance, production-ready Rust SDK for consuming real-time Solana blockchain data
 //! from Bitquery's Kafka streams with advanced resource management.
 
-#![warn(missing_docs)] // Enforce documentation for public items
-#![cfg_attr(feature = "high-performance", feature(global_allocator))] // Needs nightly for feature(global_allocator)
+#![warn(missing_docs)]
 
-// Jemallocator for high-performance feature
-#[cfg(feature = "high-performance")]
-#[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+// Re-export core functionality
+pub use bitquery_solana_core::{self as core, Error as CoreError, Result as CoreResult};
 
 // Define modules within the SDK
 pub mod batch_processor;
@@ -21,30 +18,22 @@ pub mod events;
 pub mod filters;
 pub mod processors;
 pub mod resource_manager;
-pub mod utils;
 
 // Re-export key types for easier public access
 pub use batch_processor::BatchProcessor;
 pub use client::BitqueryClient;
-pub use config::{Config, InitConfig, KafkaConfig, ProcessingConfig, ResourceLimits, RetryConfig, SslConfig}; // Added InitConfig, etc.
+pub use config::{Config, InitConfig, KafkaConfig, ProcessingConfig, ResourceLimits, RetryConfig, SslConfig};
 pub use consumer::StreamConsumer;
 pub use error::{Error, Result};
 pub use events::{SolanaEvent, EventType};
 pub use filters::{EventFilter, FilterBuilder};
-pub use processors::{DexProcessor, EventProcessor, TransactionProcessor}; // Corrected order
+pub use processors::{DexProcessor, EventProcessor, TransactionProcessor};
 pub use resource_manager::ResourceManager;
 
+// Re-export schemas from core
+pub use bitquery_solana_core::schemas;
 
-// Include protobuf generated code.
-// This makes `crate::schemas::solana::BlockMessage` etc. available.
-pub mod schemas {
-    // The `solana` module name comes from the package declaration in `solana.proto`
-    // or the generated filename if custom. Prost typically generates `package_name.rs`.
-    // If your proto package is `solana`, it generates `solana.rs`.
-    include!(concat!(env!("OUT_DIR"), "/solana.rs"));
-}
-
-use tracing::info; // For logging within init functions
+use tracing::info;
 
 /// SDK version, sourced from Cargo.toml at compile time.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

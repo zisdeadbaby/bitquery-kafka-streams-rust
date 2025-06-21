@@ -1,22 +1,13 @@
 //! Utility modules for the SDK.
 //!
-//! This module aggregates various helper functionalities used across the SDK,
-//! such as data compression and metrics integration.
-//! Caching utilities (like Base58Cache) and more complex fault tolerance
-//! mechanisms (like dedicated RetryStrategy or CircuitBreaker) from a previous
-//! iteration have been simplified or integrated into core components in this version.
+//! This module re-exports utilities from the shared core library
+//! and provides SDK-specific utilities.
 
-// pub mod base58_cache; // Not explicitly used in the new "Enhanced" file listing, TBD if needed
-pub mod compression;
-pub mod metrics; // This is the new metrics.rs provided by user
+// Re-export utilities from shared core
+pub use bitquery_solana_core::utils::*;
 
-// Re-export commonly used utilities for easier access from other SDK modules.
-// pub use base58_cache::Base58Cache; // TBD
-// Compression is usually called directly: `compression::decompress_lz4()`
-// Metrics functions/macros are typically called directly: `metrics::record_event_processed()`, `metrics::Timer`
-
-// Note: The previous version had `base58_cache.rs`, `circuit_breaker.rs`,
-// `deduplicator.rs`, `retry.rs`.
+// SDK-specific utilities (if any)
+pub mod metrics;
 // The new "Enhanced" SDK structure provided in the prompt did not list these under `utils/`
 // except for `metrics.rs` and `compression.rs`.
 // - Deduplication is now a simpler HashSet in `consumer.rs`.

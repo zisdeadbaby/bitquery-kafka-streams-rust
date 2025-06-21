@@ -1,0 +1,58 @@
+[package]
+name = "bitquery-solana-core"
+version = "1.0.0"
+edition = "2021"
+authors = ["Zolca Team"]
+description = "Shared core functionality for Bitquery Solana SDKs"
+license = "MIT OR Apache-2.0"
+keywords = ["blockchain", "solana", "bitquery", "core"]
+categories = ["api-bindings", "network-programming"]
+
+[dependencies]
+# Core dependencies from workspace
+tokio = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+async-channel = { workspace = true }
+
+# Protobuf
+prost = { workspace = true }
+prost-types = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+bytes = { workspace = true }
+
+# Compression
+lz4_flex = { workspace = true }
+
+# Encoding
+bs58 = { workspace = true }
+hex = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Utilities
+lru = { workspace = true }
+chrono = { workspace = true }
+once_cell = { workspace = true }
+parking_lot = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Metrics
+metrics = { workspace = true }
+
+[build-dependencies]
+prost-build = { workspace = true }
+
+[features]
+default = []
+high-performance = ["jemallocator"]
+
+[dependencies.jemallocator]
+version = "0.5"
+optional = true
