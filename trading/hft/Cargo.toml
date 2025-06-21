@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "ops-node"
+]
+
+resolver = "2"
