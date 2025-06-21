@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package solana;
+
+// Common header for all block messages
+message BlockHeader {
+    int64 slot = 1;
+    int64 block_height = 2;
+    string block_time = 3;
+    int64 parent_slot = 4;
+    string previous_blockhash = 5;
+}
+
+// Account info
+message Account {
+    string address = 1;
+    int64 pre_balance = 2;
+    int64 post_balance = 3;
+    bool is_writable = 4;
+    bool is_signer = 5;
+    TokenInfo token = 6;
+}
+
+// Token information
+message TokenInfo {
+    string mint = 1;
+    string owner = 2;
+    string program_id = 3;
+    uint64 amount = 4;
+    uint32 decimals = 5;
+}
+
+// Instruction data
+message Instruction {
+    string program_id = 1;
+    repeated Account accounts = 2;
+    bytes data = 3;
+    string parsed = 4;
+    int32 index = 5;
+    repeated InnerInstruction inner_instructions = 6;
+}
+
+// Inner instruction
+message InnerInstruction {
+    string program_id = 1;
+    repeated Account accounts = 2;
+    bytes data = 3;
+    int32 index = 4;
+}
+
+// Balance update
+message BalanceUpdate {
+    string account = 1;
+    string mint = 2;
+    int64 pre_balance = 3;
+    int64 post_balance = 4;
+}
+
+// Transaction
+message Transaction {
+    string signature = 1;
+    bool success = 2;
+    string error = 3;
+    string signer = 4;
+    uint64 fee = 5;
+    repeated Account accounts = 6;
+    repeated Instruction instructions = 7;
+    repeated BalanceUpdate balance_updates = 8;
+    repeated string logs = 9;
+}
+
+// Main block message
+message BlockMessage {
+    BlockHeader header = 1;
+    repeated Transaction transactions = 2;
+}
+
+// Token transfers
+message TokenTransfer {
+    string signature = 1;
+    string from = 2;
+    string to = 3;
+    string mint = 4;
+    uint64 amount = 5;
+    uint32 decimals = 6;
+    string block_time = 7;
+}
+
+// Token block message
+message TokenBlockMessage {
+    BlockHeader header = 1;
+    repeated TokenTransfer transfers = 2;
+}
+
+// DEX trade
+message DexTrade {
+    string signature = 1;
+    string program_id = 2;
+    string market = 3;
+    string side = 4;
+    string price = 5;
+    string amount_base = 6;
+    string amount_quote = 7;
+    string base_mint = 8;
+    string quote_mint = 9;
+    string maker = 10;
+    string taker = 11;
+    string block_time = 12;
+}
+
+// DEX parsed block message
+message DexParsedBlockMessage {
+    BlockHeader header = 1;
+    repeated DexTrade trades = 2;
+}
