@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package jito; // Common practice to namespace, e.g., jito.shredstream
+
+// This is a placeholder proto file for Jito ShredStream or Block Engine.
+// The actual .proto files are provided by Jito Labs or their documentation for specific services.
+// This example includes simplified messages for sending transactions/bundles and receiving shreds.
+//
+// You would replace this with the official .proto file content from Jito.
+
+// Service for sending bundles (typically part of Block Engine gRPC)
+service BlockEngine {
+  // Sends a bundle of transactions.
+  rpc SendBundle (SendBundleRequest) returns (SendBundleResponse);
+  // (Other methods like GetTipAccounts, etc.)
+}
+
+message SendBundleRequest {
+  // A bundle is typically a list of serialized VersionedTransaction.
+  repeated bytes transactions = 1; // Each 'bytes' is a serialized VersionedTransaction
+  // Bundles might also have metadata, like tip information if not included in transactions.
+  optional BundleTip tip_info = 2;
+}
+
+message BundleTip {
+  bytes tip_account = 1; // Pubkey of the Jito tip account
+  uint64 amount = 2;     // Tip amount in lamports
+}
+
+message SendBundleResponse {
+  string bundle_id = 1; // UUID or some identifier for the submitted bundle
+  // Potentially other fields like submission_timestamp, errors, etc.
+}
+
+
+// Service for receiving shreds (ShredStream)
+service ShredStream {
+  // Subscribes to a stream of shreds.
+  rpc SubscribeShreds (SubscribeShredsRequest) returns (stream ShredBatch);
+
+  // Example: Method to send a batch of packets (might be for testing or specific use cases)
+  // This was in the original ops-node code, so including a placeholder.
+  // This might not be part of the typical public ShredStream service for *receiving* shreds.
+  // It could be part of a different Jito service or an internal API.
+  rpc BroadcastPacketBatch (PacketBatch) returns (BroadcastPacketBatchResponse);
+}
+
+message SubscribeShredsRequest {
+  // Filters for regions, specific shreds, etc.
+  string region = 1; // e.g., "frankfurt", "newyork"
+  // Other potential filters...
+}
+
+message Shred {
+  bytes data = 1; // Raw shred data
+  uint64 slot = 2;
+  uint32 index = 3;
+  // ... other shred metadata (type, flags, etc.)
+}
+
+message ShredBatch {
+  repeated Shred shreds = 1;
+  uint64 timestamp_ns = 2; // Timestamp when batch was created/sent
+}
+
+
+// For BroadcastPacketBatch (as seen in original ops-node code)
+// These definitions are speculative based on common patterns for packet submission.
+
+message Packet {
+    bytes data = 1;         // Raw transaction packet data.
+    PacketMeta meta = 2;    // Metadata associated with the packet.
+}
+
+message PacketMeta {
+    uint32 port = 1;        // Source/destination port if relevant.
+    uint64 addr = 2;        // Source/destination address if relevant.
+    uint32 stake = 3;       // Validator stake if relevant for routing.
+    bool is_simple_vote_tx = 4; // Hint if it's a vote transaction.
+    // ... other metadata fields.
+}
+
+message PacketBatch {
+    repeated Packet packets = 1; // Batch of packets.
+    BatchHeader header = 2;      // Header for the batch.
+}
+
+message BatchHeader {
+    uint64 ts = 1; // Timestamp for the batch.
+    // ... other header fields.
+}
+
+message BroadcastPacketBatchResponse {
+    // Response could be simple acknowledgment or include details about processing.
+    string status = 1; // e.g., "received", "failed"
+    string message = 2; // Optional message
+}
