@@ -33,7 +33,7 @@ async fn main() -> anyhow::Result<()> {
             tracing::info!("Configuration loaded successfully from '{}' or environment variables.",
                 std::env::var("OPS_NODE_CONFIG").unwrap_or_else(|_| "ops-node.toml".to_string()));
             // Optionally log parts of the config (be careful with secrets)
-            tracing::debug!("Loaded config (partial): rpc_endpoint={}, metrics_port={}", cfg.network.rpc_endpoint, cfg.monitoring.metrics_port);
+            tracing::debug!("Loaded config (partial): metrics_port={}", cfg.monitoring.metrics_port);
             cfg
         }
         Err(e) => {

@@ -3,7 +3,7 @@
 # or its path can be specified via the OPS_NODE_CONFIG environment variable.
 
 [network]
-rpc_endpoint = "https://api.mainnet-beta.solana.com" # Example public RPC
+# rpc_endpoint removed for streams-only repo
 wss_endpoint = "wss://api.mainnet-beta.solana.com"   # Example public WSS
 # For HFT, use high-performance, low-latency RPC providers like Triton, QuickNode, Helius, etc.
 # rpc_endpoint = "https://your-private-rpc-provider.com"

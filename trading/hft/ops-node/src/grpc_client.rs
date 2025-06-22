@@ -1,3 +1,5 @@
+// All code related to Solana RPC and non-streams removed for streams-only repo
+
 use crate::config::Config;
 use crate::error::{OpsNodeError, Result};
 use crate::memory::MarketDataPacket; // Assuming MarketDataPacket is relevant for callbacks

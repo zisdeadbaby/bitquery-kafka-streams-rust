@@ -3,10 +3,6 @@ use crate::error::{OpsNodeError, Result};
 use crate::grpc_client::proto::jito::{Packet as JitoPacket, PacketBatch as JitoPacketBatch, shred_stream_client::ShredStreamClient as JitoShredStreamClient}; // For Jito integration
 use std::collections::HashMap;
 use std::sync::RwLock;
-use solana_client::nonblocking::rpc_client::RpcClient;
-use solana_client::rpc_client::RpcClient as BlockingRpcClient; // For operations that might be better blocking
-use solana_client::rpc_config::{RpcSendTransactionConfig, RpcSimulateTransactionConfig}; // For simulate
-use solana_client::rpc_response::RpcSimulateTransactionResult; // For simulation
 use solana_sdk::{
     commitment_config::{CommitmentConfig, CommitmentLevel},
     compute_budget::ComputeBudgetInstruction,
@@ -37,8 +33,6 @@ const JITO_TIP_ACCOUNTS: [&str; 3] = [ // Jito tip accounts
 
 
 pub struct TransactionSender {
-    rpc_client: Arc<RpcClient>, // Async RPC client
-    blocking_rpc_client: Arc<BlockingRpcClient>, // Sync RPC client for specific tasks like simulate
     jito_client: Option<Arc<JitoShredStreamClient<TonicChannel>>>, // Optional Jito client
     priority_optimizer: PriorityFeeOptimizer,
     compute_unit_cache: Arc<RwLock<HashMap<String, u32>>>, // Cache key: sorted program IDs string
@@ -49,18 +43,6 @@ pub struct TransactionSender {
 
 impl TransactionSender {
     pub async fn new(config: Arc<Config>, keypair: Arc<Keypair>, jito_channel: Option<TonicChannel>) -> Result<Self> {
-        let rpc_client = Arc::new(RpcClient::new_with_timeout_and_commitment(
-            config.network.rpc_endpoint.clone(),
-            Duration::from_millis(config.network.request_timeout_ms),
-            CommitmentConfig::confirmed(), // Use confirmed for most operations, can be overridden
-        ));
-
-        let blocking_rpc_client = Arc::new(BlockingRpcClient::new_with_timeout_and_commitment(
-            config.network.rpc_endpoint.clone(),
-            Duration::from_millis(config.network.request_timeout_ms * 2), // Longer timeout for potentially slower sync calls
-            CommitmentConfig::confirmed(),
-        ));
-
         let jito_client = if config.trading.enable_jito_bundles {
             jito_channel.map(|channel| Arc::new(JitoShredStreamClient::new(channel)))
         } else {
@@ -72,14 +54,12 @@ impl TransactionSender {
             tracing::warn!("Jito bundle submission is enabled in config, but no Jito channel was provided. Jito submission will be skipped.");
         }
 
-        let priority_optimizer = PriorityFeeOptimizer::new(rpc_client.clone(), config.clone());
+        let priority_optimizer = PriorityFeeOptimizer::new(config.clone());
         let compute_unit_cache = Arc::new(RwLock::new(HashMap::new()));
         // Max concurrent *pending* operations to Solana, not just submissions
         let rate_limiter = Arc::new(Semaphore::new(config.performance.max_concurrent_operations));
 
         Ok(Self {
-            rpc_client,
-            blocking_rpc_client,
             jito_client,
             priority_optimizer,
             compute_unit_cache,
@@ -137,13 +117,6 @@ impl TransactionSender {
             )))?;
 
         // 4. Multi-path Submission (RPC and Jito if enabled)
-        let rpc_send_config = RpcSendTransactionConfig {
-            skip_preflight: true, // Already simulated
-            preflight_commitment: Some(CommitmentLevel::Confirmed), // Or lower like processed
-            max_retries: Some(0), // Do not retry at RPC level, handle retry logic outside if needed
-            ..Default::default()
-        };
-
         let jito_future_opt = if self.config.trading.enable_jito_bundles && self.jito_client.is_some() {
             Some(self.send_via_jito(versioned_tx.clone(), priority_fee_lamports))
         } else {
@@ -371,7 +344,6 @@ impl TransactionSender {
 
 
 pub struct PriorityFeeOptimizer {
-    rpc_client: Arc<RpcClient>,
     config: Arc<Config>, // Access to trading config like priority_fee_cap
     // Historical fees can be complex to manage; for now, rely on recent RPC data per call.
     // historical_fees: Arc<RwLock<VecDeque<u64>>>, // Store limited history
@@ -382,9 +354,8 @@ impl PriorityFeeOptimizer {
     // const FEE_HISTORY_LIMIT: usize = 100; // Max items in historical_fees
     // const FETCH_INTERVAL: Duration = Duration::from_secs(5); // How often to refresh full fee data
 
-    pub fn new(rpc_client: Arc<RpcClient>, config: Arc<Config>) -> Self {
+    pub fn new(config: Arc<Config>) -> Self {
         Self {
-            rpc_client,
             config,
             // historical_fees: Arc::new(RwLock::new(VecDeque::with_capacity(Self::FEE_HISTORY_LIMIT))),
             // last_fetch_time: Arc::new(RwLock::new(Instant::now() - Self::FETCH_INTERVAL * 2)), // Force initial fetch

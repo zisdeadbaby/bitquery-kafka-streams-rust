@@ -14,7 +14,6 @@ pub struct Config {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct NetworkConfig {
-    pub rpc_endpoint: String,
     pub wss_endpoint: String,
     pub yellowstone_endpoint: String,
     pub jito_endpoint: String,
@@ -97,9 +96,7 @@ impl Config {
             anyhow::bail!("Auth private_key_path is not a file: {:?}", self.auth.private_key_path);
         }
 
-        // Validate RPC and WSS endpoints are valid URLs (basic check)
-        url::Url::parse(&self.network.rpc_endpoint)
-            .with_context(|| format!("Invalid network.rpc_endpoint URL: {}", self.network.rpc_endpoint))?;
+        // Validate WSS and Yellowstone endpoints are valid URLs (basic check)
         url::Url::parse(&self.network.wss_endpoint)
             .with_context(|| format!("Invalid network.wss_endpoint URL: {}", self.network.wss_endpoint))?;
         url::Url::parse(&self.network.yellowstone_endpoint)

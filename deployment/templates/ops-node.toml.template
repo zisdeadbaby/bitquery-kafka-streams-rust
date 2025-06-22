@@ -6,7 +6,6 @@ host = "${OPS_NODE_HOST:-127.0.0.1}"
 port = ${OPS_NODE_PORT:-8080}
 
 [rpc]
-endpoint = "${RPC_ENDPOINT:-https://api.mainnet-beta.solana.com}"
 timeout_ms = ${RPC_TIMEOUT_MS:-5000}
 
 [yellowstone]

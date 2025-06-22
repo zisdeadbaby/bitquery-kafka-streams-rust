@@ -1,12 +1,14 @@
-# Frankfurt VPS Deployment Guide for ops-node
+# Frankfurt VPS Deployment Guide
 
-This guide details the setup and optimization of the `ops-node` application on a Frankfurt-based VPS, specifically tailored for low-latency trading operations connected to Solana RPC providers like RPCFast.
+This guide details the setup and optimization of the `ops-node` application on a Frankfurt-based VPS, specifically tailored for low-latency trading operations.
+
+<!-- All references to RPCFast have been removed. This repo is now streams-only. -->
 
 ## VPS Details (Example)
 - **IP**: `141.95.110.92` (Replace with your actual IP)
 - **SSH User**: `ubuntu` (Or your default SSH user)
 - **Provider**: OVHcloud Frankfurt (Or similar, steps might vary slightly)
-- **Target Latency**: Aim for <0.2ms to RPCFast Frankfurt nodes.
+- **Target Latency**: Aim for <0.2ms to Frankfurt nodes.
 
 ## Section 1: Initial Server Setup
 

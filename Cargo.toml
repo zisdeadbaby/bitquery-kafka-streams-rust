@@ -1,10 +1,20 @@
+[package]
+name = "bitquery-solana-kafka"
+version = "2.0.0"
+edition = "2021"
+authors = ["Zolca Team"]
+description = "Specialized Kafka streaming client for Bitquery Solana data with enhanced features"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/bitquery-solana-kafka"
+keywords = ["blockchain", "solana", "kafka", "streaming", "bitquery"]
+categories = ["api-bindings", "asynchronous", "network-programming"]
+
 [workspace]
 resolver = "2"
 members = [
-    "shared/bitquery-solana-core",
-    "streams/kafka/bitquery-solana-kafka",
-    "trading/hft/ops-node",
-    "kafka_test"
+    ".",
+    "core",
+    "tools"
 ]
 
 # Shared workspace dependencies to ensure version consistency
@@ -60,3 +70,92 @@ prost-build = "0.13"
 [workspace.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[dependencies]
+# Shared core library
+bitquery-solana-core = { path = "./core" }
+
+# Kafka
+rdkafka = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+async-channel = { workspace = true }
+crossbeam-channel = "0.5"
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+bytes = { workspace = true }
+prost = { workspace = true }
+
+# Encoding
+bs58 = { workspace = true }
+hex = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Utilities
+chrono = { workspace = true }
+once_cell = { workspace = true }
+parking_lot = { workspace = true }
+uuid = { workspace = true }
+lru = { workspace = true }
+num_cpus = "1.16"
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "fmt", "std"] }
+
+# Metrics
+metrics = { workspace = true }
+
+# Optional high-performance allocator
+jemallocator = { workspace = true, optional = true }
+
+# Health check example dependencies
+warp = "0.3"
+
+[dev-dependencies]
+num_cpus = "1.16"
+mockall = "0.12"
+tokio-test = "0.4"
+criterion = "0.5"
+tempfile = "3.8"
+
+[features]
+default = []
+high-performance = ["bitquery-solana-core/high-performance", "jemallocator"]
+metrics = []
+
+[build-dependencies]
+prost-build = { workspace = true }
+
+[[example]]
+name = "basic_consumer"
+path = "examples/basic_consumer.rs"
+
+[[example]]
+name = "connection_test"
+path = "examples/connection_test.rs"
+
+[[example]]
+name = "direct_connection_test"
+path = "examples/direct_connection_test.rs"
+
+[[example]]
+name = "dex_trading_bot"
+path = "examples/dex_trading_bot.rs"
+
+[[example]]
+name = "high_volume_processor"
+path = "examples/high_volume_processor.rs"
+
+[[example]]
+name = "health_check"
+path = "examples/health_check.rs"
