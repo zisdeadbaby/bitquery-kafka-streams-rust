@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use bitquery_solana_core::{
+    use bitquery_solana_kafka::{
         // Main SDK Config and its components
         Config as SdkFullConfig, InitConfig, // InitConfig from lib.rs
         KafkaConfig, SslConfig, ProcessingConfig, ResourceLimits, RetryConfig,

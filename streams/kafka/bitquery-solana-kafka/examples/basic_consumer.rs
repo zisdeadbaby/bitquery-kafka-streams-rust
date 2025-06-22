@@ -1,4 +1,4 @@
-use bitquery_solana_core::{
+use bitquery_solana_kafka::{
     // SDK Initialization
     init_with_config, InitConfig, // Using InitConfig from lib.rs for SDK setup
     // Core SDK Client and Configuration

@@ -1,15 +1,17 @@
-use bitquery_solana_core::{
+use bitquery_solana_kafka::{
     // SDK Initialization
     init_with_config, InitConfig,
     // Core Client & Configuration
     BitqueryClient, Config as SdkFullConfig, // Aliasing Config
-    ProcessingConfig, ResourceLimits, // Specific config structs
+    ResourceLimits, // Specific config structs
     // Event Handling, Filtering
-    SolanaEvent, EventType, EventFilter, FilterBuilder,
+    SolanaEvent, EventType, FilterBuilder,
     // Processors & Error Handling
-    EventProcessor, DexProcessor, Result as SdkResult,
+    EventProcessor, DexProcessor,
     // Utilities (e.g., for custom metrics if needed, or direct access to SDK's metrics utils)
     utils::metrics as sdk_metrics_utils,
+    // Error handling
+    error::Result as SdkResult,
 };
 use async_trait::async_trait; // For implementing EventProcessor for custom wrappers
 use std::sync::Arc;
