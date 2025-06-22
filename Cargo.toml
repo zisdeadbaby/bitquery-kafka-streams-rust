@@ -3,7 +3,8 @@ resolver = "2"
 members = [
     "shared/bitquery-solana-core",
     "streams/kafka/bitquery-solana-kafka",
-    "trading/hft/ops-node"
+    "trading/hft/ops-node",
+    "kafka_test"
 ]
 
 # Shared workspace dependencies to ensure version consistency

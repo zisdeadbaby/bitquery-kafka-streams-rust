@@ -19,10 +19,15 @@ async fn main() -> anyhow::Result<()> {
     // Create client with environment overrides if needed
     let config = SdkConfig::default();
     
-    // Verify SSL paths exist
-    if !std::path::Path::new(&config.kafka.ssl.ca_cert).exists() {
-        error!("CA certificate not found at: {}", config.kafka.ssl.ca_cert);
-        return Err(anyhow::anyhow!("Missing SSL certificates"));
+    // Only verify SSL paths if using SSL
+    if std::env::var("KAFKA_SECURITY_PROTOCOL").unwrap_or_default() == "SASL_SSL" {
+        if !std::path::Path::new(&config.kafka.ssl.ca_cert).exists() {
+            error!("CA certificate not found at: {}", config.kafka.ssl.ca_cert);
+            return Err(anyhow::anyhow!("Missing SSL certificates"));
+        }
+        info!("Using SSL connection");
+    } else {
+        info!("Using non-SSL (SASL_PLAINTEXT) connection");
     }
 
     // Create client

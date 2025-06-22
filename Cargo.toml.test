@@ -1,0 +1,13 @@
+[package]
+name = "test_kafka_connection"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "test_kafka_connection"
+path = "test_kafka_connection.rs"
+
+[dependencies]
+rdkafka = { version = "0.36", features = ["cmake-build", "ssl-vendored", "gssapi-vendored", "libz-static", "curl-static"] }
+tokio = { version = "1.0", features = ["full"] }
+hex = "0.4"

@@ -78,6 +78,14 @@ name = "basic_consumer"
 path = "examples/basic_consumer.rs"
 
 [[example]]
+name = "connection_test"
+path = "examples/connection_test.rs"
+
+[[example]]
+name = "direct_connection_test"
+path = "examples/direct_connection_test.rs"
+
+[[example]]
 name = "dex_trading_bot"
 path = "examples/dex_trading_bot.rs"
 

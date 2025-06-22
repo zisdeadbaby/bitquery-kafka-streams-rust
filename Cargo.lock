@@ -2824,6 +2824,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "kafka_test"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "hex",
+ "rdkafka",
+ "tokio",
+]
+
+[[package]]
 name = "keccak"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"

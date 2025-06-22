@@ -52,9 +52,3 @@ scrape_configs:
       - source_labels: [__meta_kubernetes_pod_name]
         action: replace
         target_label: kubernetes_pod_name
-  scrape_interval: 15s
-
-scrape_configs:
-  - job_name: 'bitquery-kafka-consumer'
-    static_configs:
-      - targets: ['localhost:9090']
