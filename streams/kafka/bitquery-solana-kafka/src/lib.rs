@@ -12,15 +12,25 @@
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 // Declare all public and internal modules of the SDK
+/// Batch processing functionality for efficient Kafka message handling
 pub mod batch_processor;
+/// Main client interface for interacting with Bitquery Solana services
 pub mod client;
+/// Configuration structures for SDK, Kafka, and processing settings
 pub mod config; // Contains SdkConfig, KafkaConfig, ProcessingConfig, etc.
+/// Kafka consumer implementation with Solana-specific optimizations
 pub mod consumer;
+/// Error types and error handling utilities
 pub mod error;
+/// Event definitions and serialization for Solana blockchain data
 pub mod events;
+/// Message filtering and routing functionality
 pub mod filters;
+/// Message processors for different Solana data types
 pub mod processors;
+/// Resource management and connection pooling
 pub mod resource_manager;
+/// Utility functions and helper modules
 pub mod utils;
 
 // Re-export key types and structs for convenient access by SDK users

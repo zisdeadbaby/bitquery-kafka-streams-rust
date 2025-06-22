@@ -8,11 +8,17 @@
 //! - Retry mechanisms with backoff
 //! - Metrics recording
 
+/// Data compression utilities using LZ4 algorithm
 pub mod compression;
+/// Base58 encoding/decoding with LRU caching for performance
 pub mod base58_cache;
+/// Message deduplication with configurable time windows
 pub mod deduplicator;
+/// Circuit breaker pattern for fault tolerance
 pub mod circuit_breaker;
+/// Retry mechanisms with exponential backoff
 pub mod retry;
+/// Metrics collection and timing utilities
 pub mod metrics;
 
 // Re-export commonly used utilities

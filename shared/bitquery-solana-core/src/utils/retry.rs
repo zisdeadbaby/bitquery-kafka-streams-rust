@@ -7,9 +7,13 @@ use tracing::{warn, debug};
 /// Configuration for retry operations
 #[derive(Debug, Clone)]
 pub struct RetryConfig {
+    /// Maximum number of retry attempts
     pub max_retries: usize,
+    /// Initial delay before the first retry
     pub initial_delay: Duration,
+    /// Maximum delay between retries (cap for exponential backoff)
     pub max_delay: Duration,
+    /// Multiplier for exponential backoff (delay *= multiplier each retry)
     pub multiplier: f64,
 }
 

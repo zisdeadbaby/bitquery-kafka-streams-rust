@@ -42,9 +42,11 @@ pub enum Error {
     /// The `source` field contains the last error that occurred.
     #[error("Operation failed after {attempts} retry attempts: {source}")]
     RetryExhausted {
+        /// Number of retry attempts that were made before giving up
         attempts: usize,
         #[source] // Enables `err.source()` to get the underlying error
-        source: Box<Error> // Boxed to avoid Error enum being infinitely sized if it contains itself directly
+        /// The underlying error that caused the final failure
+        source: Box<Error>, // Boxed to avoid Error enum being infinitely sized if it contains itself directly
     },
 
     /// Errors related to standard I/O operations (e.g., file access for SSL certs).
@@ -62,43 +64,60 @@ pub enum Error {
 }
 
 impl Error {
-    /// A helper function to create an `Error::RetryExhausted`.
-    /// It takes the number of attempts and the last error encountered, boxing the last error.
-    pub fn retry_exhausted(attempts: usize, last_error: Error) -> Self {
-        Error::RetryExhausted { attempts, source: Box::new(last_error) }
+    /// Creates a Config error.
+    pub fn config(msg: impl Into<String>) -> Self {
+        Self::Config(msg.into())
+    }
+
+    /// Creates a Connection error.
+    pub fn connection(msg: impl Into<String>) -> Self {
+        Self::Connection(msg.into())
+    }
+
+    /// Creates a Compression error.
+    pub fn compression(msg: impl Into<String>) -> Self {
+        Self::Compression(msg.into())
+    }
+
+    /// Creates a Processing error.
+    pub fn processing(msg: impl Into<String>) -> Self {
+        Self::Processing(msg.into())
+    }
+
+    /// Creates a ResourceError.
+    pub fn resource(msg: impl Into<String>) -> Self {
+        Self::ResourceError(msg.into())
+    }
+
+    /// Creates a ChannelError.
+    pub fn channel(msg: impl Into<String>) -> Self {
+        Self::ChannelError(msg.into())
+    }
+
+    /// Creates an Other error.
+    pub fn other(msg: impl Into<String>) -> Self {
+        Self::Other(msg.into())
+    }
+
+    /// Creates a RetryExhausted error.
+    pub fn retry_exhausted(attempts: usize, source: Error) -> Self {
+        Self::RetryExhausted {
+            attempts,
+            source: Box::new(source),
+        }
     }
 }
 
-// `From` implementations for `async_channel` errors, converting them into `Error::ChannelError`.
-// This allows `?` operator to be used conveniently with channel operations.
-impl<T> From<async_channel::SendError<T>> for Error {
-    fn from(err: async_channel::SendError<T>) -> Self {
-        Error::ChannelError(format!("Async channel send error: {}", err))
+// Automatically convert various error types as needed.
+
+impl From<serde_json::Error> for Error {
+    fn from(err: serde_json::Error) -> Self {
+        Self::Processing(format!("JSON serialization/deserialization error: {}", err))
     }
 }
 
-impl From<async_channel::RecvError> for Error {
-    fn from(err: async_channel::RecvError) -> Self {
-        Error::ChannelError(format!("Async channel receive error: {}", err))
+impl From<tokio::task::JoinError> for Error {
+    fn from(err: tokio::task::JoinError) -> Self {
+        Self::Other(format!("Task join error: {}", err))
     }
 }
-
-// `From` implementations for `crossbeam_channel` errors, if it's used.
-// The new `Cargo.toml` includes `crossbeam-channel`.
-impl<T> From<crossbeam_channel::SendError<T>> for Error {
-    fn from(err: crossbeam_channel::SendError<T>) -> Self {
-        Error::ChannelError(format!("Crossbeam channel send error: {}", err))
-    }
-}
-
-impl From<crossbeam_channel::RecvError> for Error {
-    fn from(err: crossbeam_channel::RecvError) -> Self {
-        Error::ChannelError(format!("Crossbeam channel receive error: {}", err))
-    }
-}
-
-// Note: The `CircuitBreakerOpen` error variant was present in a previous iteration.
-// The new "Enhanced SDK" design uses `ResourceManager` and its backpressure mechanism
-// instead of a separate `CircuitBreaker` utility. So, `CircuitBreakerOpen` is removed.
-// Resource-related unavailability is now signaled by `Error::ResourceError`
-// (e.g., from `ResourceManager::check_resources`).
