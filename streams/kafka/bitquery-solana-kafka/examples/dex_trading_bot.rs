@@ -4,9 +4,11 @@ use bitquery_solana_kafka::{
     // Core Client & Configuration
     BitqueryClient, Config as SdkFullConfig, // Aliasing Config
     // Event Handling, Filtering
-    SolanaEvent, EventType, EventFilter, FilterBuilder,
+    EventType, FilterBuilder,
     // Processors & Error Handling
-    EventProcessor, DexProcessor, Result as SdkResult,
+    EventProcessor, DexProcessor,
+    // Error handling
+    error::Result as SdkResult,
 };
 use std::sync::Arc;
 use tracing::{info, error, warn, debug, trace}; // Logging utilities
