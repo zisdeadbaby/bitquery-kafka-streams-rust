@@ -3,6 +3,13 @@ name = "ops-node"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+# Optional performance features
+io_uring = ["monoio/iouring"]
+af_xdp = []
+tsc = []
+default = []
+
 [dependencies]
 # Async Runtime
 tokio = { version = "1.39", features = ["full", "rt-multi-thread", "macros"] }
@@ -69,6 +76,7 @@ hex = "0.4"
 rand = "0.8"
 sysinfo = "0.30"
 ctrlc = "3.4.4"
+url = "2.5"
 
 [build-dependencies]
 tonic-build = "0.12"

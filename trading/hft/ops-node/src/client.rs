@@ -4,22 +4,21 @@ use crate::{
     error::{OpsNodeError, Result as OpsNodeResult},
     grpc_client::GrpcManager,
     memory::{MemoryPool, MarketDataPacket},
-    state::{SharedStateManager, PositionManager, TokenInfoV1, PoolInfoV1, PositionV1, MarketStateV1}, // Versioned states
-    strategies::{TradingStrategy, TokenOpportunity, SnipeExecutionParams, ExitParams, sniper::TokenSniperConfig}, // Added more strategy items
+    state::{SharedStateManager, PositionManager, PositionV1, MarketStateV1}, // Versioned states
+    strategies::{TradingStrategy, TokenOpportunity, SnipeExecutionParams, ExitParams}, // Added more strategy items
     tx_sender::TransactionSender,
 };
-use parking_lot::RwLock;
 use solana_sdk::{
     pubkey::Pubkey,
     signature::Keypair,
     signer::Signer,
     instruction::Instruction, // For building actual swap instructions
 };
-use spl_token::solana_program::system_instruction; // Example for SOL transfer if needed for swaps
 use std::sync::Arc;
 use std::time::Duration; // For intervals
-use tokio::sync::{mpsc, Notify}; // Added Notify for shutdown coordination
+use tokio::sync::Notify; // For shutdown coordination
 use tokio::time::interval;
+use warp::Filter; // For warp metrics server
 
 
 const MARKET_STATE_PERSIST_INTERVAL_SECS: u64 = 300; // Persist state every 5 minutes
@@ -33,7 +32,7 @@ pub struct OpsNodeClient {
     tx_sender: Arc<TransactionSender>,
     state_manager: Arc<SharedStateManager>,
     position_manager: Arc<PositionManager>,
-    memory_pool: Arc<MemoryPool>, // For custom allocations if needed by strategies or processing
+    _memory_pool: Arc<MemoryPool>, // For custom allocations if needed by strategies or processing
     latency_monitor: Arc<LatencyMonitor>,
     metrics_exporter: Arc<MetricsExporter>, // For serving Prometheus metrics
     strategy: Arc<dyn TradingStrategy>,
@@ -86,7 +85,7 @@ impl OpsNodeClient {
             tx_sender,
             state_manager,
             position_manager,
-            memory_pool,
+            _memory_pool: memory_pool,
             latency_monitor,
             metrics_exporter,
             strategy,
@@ -117,15 +116,26 @@ impl OpsNodeClient {
         tokio::select! {
             _ = self.shutdown_notify.notified() => {
                 tracing::info!("Shutdown signal received by OpsNodeClient run loop. Initiating graceful shutdown of tasks.");
+                Ok(()) // Return Ok for consistency
             }
-            res = market_data_handle => res?, // Propagate error if task failed
-            res = slot_monitor_handle => res?,
-            res = strategy_executor_handle => res?,
-            res = position_manager_handle => res?,
+            res = market_data_handle => res?.map(|_| ()), // Propagate error if task failed
+            res = slot_monitor_handle => res?.map(|_| ()),
+            res = strategy_executor_handle => res?.map(|_| ()),
+            res = position_manager_handle => res?.map(|_| ()),
             // Non-critical tasks might not need to stop the whole client if they error
-            res = state_persister_handle => if let Err(e) = res? { tracing::error!("State persister task exited with error: {}", e); } ,
-            res = metrics_server_handle => if let Err(e) = res? { tracing::error!("Metrics server task exited with error: {}", e); },
-        }
+            res = state_persister_handle => { 
+                if let Err(e) = res { 
+                    tracing::error!("State persister task exited with error: {}", e); 
+                }
+                Ok(())
+            },
+            res = metrics_server_handle => { 
+                if let Err(e) = res { 
+                    tracing::error!("Metrics server task exited with error: {}", e); 
+                }
+                Ok(())
+            },
+        }?;
 
         tracing::info!("OpsNodeClient run loop finished. All tasks should be terminating.");
         // Additional cleanup can be done here if necessary before OpsNodeClient is dropped.
@@ -441,7 +451,7 @@ fn convert_opportunity_to_execution_params(opportunity: &TokenOpportunity, tradi
     // Let's assume recommended_trade_size_quote is the amount of quote to spend.
     // min_amount_out_token would be (recommended_trade_size_quote / price) * (1 - slippage_bps/10000)
     // This is a placeholder.
-    let slippage_bps = trading_config.max_slippage_bps; // Use configured slippage
+    let _slippage_bps = trading_config.max_slippage_bps; // Use configured slippage
     let min_amount_out_token_placeholder = 0; // Needs actual calculation based on price and slippage
 
     SnipeExecutionParams {
@@ -458,9 +468,9 @@ fn convert_opportunity_to_execution_params(opportunity: &TokenOpportunity, tradi
 async fn execute_snipe_trade(
     tx_sender: Arc<TransactionSender>,
     params: SnipeExecutionParams,
-    payer_keypair: Arc<Keypair>,
+    _payer_keypair: Arc<Keypair>,
     position_manager: Arc<PositionManager>,
-    token_decimals: u8, // Decimals of the token being bought
+    _token_decimals: u8, // Decimals of the token being bought
     opportunity: TokenOpportunity, // Pass opportunity for recording position details
 ) -> OpsNodeResult<()> {
     tracing::info!("Attempting to execute snipe: {:?}", params);
@@ -525,9 +535,9 @@ async fn execute_exit_trade(
     tx_sender: Arc<TransactionSender>,
     position_to_exit: &PositionV1,
     exit_params: ExitParams,
-    payer_keypair: Arc<Keypair>,
+    _payer_keypair: Arc<Keypair>,
     position_manager: Arc<PositionManager>,
-    token_decimals: u8, // Decimals of the token being sold
+    _token_decimals: u8, // Decimals of the token being sold
 ) -> OpsNodeResult<()> {
     let token_mint_pk = Pubkey::new_from_array(position_to_exit.token_mint);
     tracing::info!("Attempting to execute exit for token {}: Reason '{}', Min Quote Out: {}", token_mint_pk, exit_params.reason, exit_params.min_amount_out_quote);

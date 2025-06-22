@@ -1,6 +1,6 @@
 use super::{TokenOpportunity, TradingStrategy, ExitParams}; // Removed SnipeExecutionParams as it's not directly returned by evaluate_new_entity
 use crate::state::{MarketStateV1, TokenInfoV1, PositionV1, PoolInfoV1};
-use crate::config::{Config, TradingConfig}; // To access strategy-specific configs
+use crate::config::Config; // To access strategy-specific configs
 use crate::error::{OpsNodeError, Result as OpsNodeResult};
 use async_trait::async_trait;
 use solana_sdk::pubkey::Pubkey;
@@ -67,7 +67,7 @@ impl TokenSnipingStrategy {
         market_state: &MarketStateV1,
     ) -> f64 {
         let mut score = 0.0;
-        let mut contributing_factors = 0; // Count how many factors contribute to the score
+        let mut _contributing_factors = 0; // Count how many factors contribute to the score
 
         // 1. Liquidity Score (0.0 - 0.4)
         if let Some(p) = pool {
@@ -83,7 +83,7 @@ impl TokenSnipingStrategy {
                 let liquidity_cap = self.config.min_liquidity_sol_equivalent * 10.0;
                 let normalized_liquidity = (liquidity_sol_equivalent / liquidity_cap).min(1.0);
                 score += normalized_liquidity * 0.4; // Weight for liquidity
-                contributing_factors += 1;
+                _contributing_factors += 1;
             } else {
                 return 0.0; // Below minimum liquidity, no opportunity
             }
@@ -96,7 +96,7 @@ impl TokenSnipingStrategy {
         if token_age_slots <= self.config.max_token_age_slots {
             let age_score_contribution = (1.0 - (token_age_slots as f64 / self.config.max_token_age_slots as f64)) * 0.3;
             score += age_score_contribution.max(0.0); // Ensure non-negative
-            contributing_factors += 1;
+            _contributing_factors += 1;
         } else {
             return 0.0; // Token is too old for this sniping strategy
         }
@@ -113,13 +113,13 @@ impl TokenSnipingStrategy {
         }
         // Max contribution from this section is 0.2
         // This part is very basic and can be expanded with more sophisticated text analysis or ML.
-        contributing_factors += 1; // Assume it always contributes something or is neutral
+        _contributing_factors += 1; // Assume it always contributes something or is neutral
 
         // 4. Total Supply Score (0.0 - 0.1) - Penalize extremely high supplies (potential dilution)
         if token.total_supply > 0 && token.total_supply < 1_000_000_000_000_000 { // Avoid overflow with log10
             let supply_score = (1.0 - (token.total_supply as f64).log10().max(0.0) / 18.0).max(0.0); // Normalize based on log10 of supply
             score += supply_score * 0.1;
-            contributing_factors += 1;
+            _contributing_factors += 1;
         }
 
         // Normalize score: if all factors contributed, score is already somewhat normalized by weights.
@@ -163,7 +163,7 @@ impl TokenSnipingStrategy {
         // Identify which reserve is the token and which is the quote currency (e.g. SOL or USDC)
         // This requires knowing the decimals of both tokens in the pool.
         let token_a_info = market_state.tokens.get(&pool.token_a_mint)?;
-        let token_b_info = market_state.tokens.get(&pool.token_b_mint)?;
+        let _token_b_info = market_state.tokens.get(&pool.token_b_mint)?;
 
         // Assume token_a is the one we are interested in, and token_b is the quote (e.g. SOL/USDC)
         // This logic needs to be robust if the pair order can vary.

@@ -1,5 +1,5 @@
 use ops_node::{
-    Config, OpsNodeClient, OpsNodeResult, TradingStrategy, // Assuming OpsNodeResult is the error type from lib.rs
+    Config, OpsNodeClient, TradingStrategy, // Assuming OpsNodeResult is the error type from lib.rs
     print_version_info, log_active_features, // Utility functions from lib.rs
 };
 use ops_node::strategies::sniper::{TokenSnipingStrategy, TokenSniperConfig}; // Specific strategy and its config
@@ -33,7 +33,7 @@ async fn main() -> anyhow::Result<()> {
             tracing::info!("Configuration loaded successfully from '{}' or environment variables.",
                 std::env::var("OPS_NODE_CONFIG").unwrap_or_else(|_| "ops-node.toml".to_string()));
             // Optionally log parts of the config (be careful with secrets)
-            tracing::debug!("Loaded config (partial): rpc_endpoint={}, metrics_port={}", config.network.rpc_endpoint, config.monitoring.metrics_port);
+            tracing::debug!("Loaded config (partial): rpc_endpoint={}, metrics_port={}", cfg.network.rpc_endpoint, cfg.monitoring.metrics_port);
             cfg
         }
         Err(e) => {

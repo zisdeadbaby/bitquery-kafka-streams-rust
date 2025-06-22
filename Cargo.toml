@@ -2,7 +2,6 @@
 resolver = "2"
 members = [
     "shared/bitquery-solana-core",
-    "bitquery-solana-sdk",
     "streams/kafka/bitquery-solana-kafka",
     "trading/hft/ops-node"
 ]

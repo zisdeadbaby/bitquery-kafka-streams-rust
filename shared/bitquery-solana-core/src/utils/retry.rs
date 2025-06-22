@@ -134,7 +134,7 @@ impl RetryStrategy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::RetryConfig; // Assuming RetryConfig is in scope
+    use std::time::Instant;
     use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
     use std::sync::Arc;
     use crate::error::Error; // Import your SDK Error type
@@ -145,7 +145,7 @@ mod tests {
 
     impl From<TestError> for Error {
         fn from(e: TestError) -> Self {
-            Error::Other(e.0)
+            Error::Generic(e.0)
         }
     }
 
@@ -222,12 +222,8 @@ mod tests {
         let result = strategy.retry("test_op_exhaust", operation).await;
         assert!(result.is_err());
         match result.err().unwrap() {
-            SdkError::RetryExhausted { attempts: num_attempts, source } => {
-                assert_eq!(num_attempts, config.max_retries + 1); // total attempts = max_retries + 1
-                 match *source {
-                    SdkError::Other(msg) => assert_eq!(msg, "persistent failure"),
-                    _ => panic!("Unexpected source error type"),
-                }
+            Error::RetryExhausted(msg) => {
+                assert!(msg.contains("persistent failure"));
             }
             _ => panic!("Expected RetryExhausted error"),
         }

@@ -1,8 +1,7 @@
 use socket2::{Domain, Protocol, Socket, Type};
 use std::net::SocketAddr;
-use std::os::fd::{AsRawFd, FromRawFd, IntoRawFd}; // Added FromRawFd, IntoRawFd
+use std::os::fd::{FromRawFd, IntoRawFd}; // Added FromRawFd, IntoRawFd
 use std::io::Result as IoResult; // Alias for std::io::Result
-use std::sync::Arc;
 use tokio::net::TcpStream; // For async connect
 
 // Conditional compilation for io_uring and AF_XDP
@@ -39,7 +38,15 @@ impl OptimizedSocket {
         #[cfg(target_os = "linux")]
         {
             use libc::*;
-            let fd = socket.as_raw_fd();
+            
+            // Create a raw socket for setting advanced options
+            let raw_fd = unsafe { 
+                libc::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
+            };
+            if raw_fd < 0 {
+                tracing::warn!("Failed to create raw socket for advanced options: {}", std::io::Error::last_os_error());
+            } else {
+                let fd = raw_fd;
 
             // TCP_QUICKACK: Disable delayed ACKs. Can reduce latency for request-response patterns.
             // Setting it to 1 enables quick ACKs.
@@ -82,6 +89,10 @@ impl OptimizedSocket {
             // }
             // TCP_NOTSENT_LOWAT might require specific kernel versions/configs.
             // If it causes issues or isn't available, it can be commented out.
+                
+                // Close the raw socket after setting options
+                unsafe { libc::close(fd); }
+            }
         }
 
         Ok(Self {
@@ -124,7 +135,7 @@ impl OptimizedSocket {
         let std_tcp_stream = unsafe { std::net::TcpStream::from_raw_fd(std_socket.into_raw_fd()) };
 
         // Convert std::net::TcpStream to tokio::net::TcpStream
-        let tokio_tcp_stream = TcpStream::connect_std(std_tcp_stream, &addr).await?;
+        let tokio_tcp_stream = TcpStream::from_std(std_tcp_stream)?;
         tracing::info!("Successfully connected to {} asynchronously.", addr);
         Ok(tokio_tcp_stream)
     }

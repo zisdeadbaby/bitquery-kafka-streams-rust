@@ -34,7 +34,7 @@ use std::time::Instant;
 pub struct Timer {
     /// The `Instant` when the timer was started.
     pub start: Instant, // Made public for direct access if needed, e.g. in BatchProcessor
-    name: &'static str,
+    _name: &'static str,
 }
 
 impl Timer {
@@ -46,7 +46,7 @@ impl Timer {
     pub fn new(name: &'static str) -> Self {
         Self {
             start: Instant::now(),
-            name,
+            _name: name,
         }
     }
 }

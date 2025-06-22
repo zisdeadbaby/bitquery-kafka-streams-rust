@@ -5,7 +5,7 @@ use crate::{
 };
 use super::EventProcessor; // The EventProcessor trait from processors/mod.rs
 use async_trait::async_trait;
-use tracing::{info, debug, warn}; // Logging utilities
+use tracing::{info, debug, warn, trace}; // Logging utilities
 
 /// `DexProcessor` is an `EventProcessor` specialized for handling `SolanaEvent`s
 /// that represent Decentralized Exchange (DEX) trades.

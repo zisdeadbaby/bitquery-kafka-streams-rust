@@ -1,4 +1,4 @@
-use bitquery_solana_sdk::{
+use bitquery_solana_core::{
     // SDK Initialization
     init_with_config, InitConfig,
     // Core Client & Configuration

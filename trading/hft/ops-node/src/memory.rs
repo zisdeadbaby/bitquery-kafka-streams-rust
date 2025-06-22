@@ -3,7 +3,7 @@ use crossbeam_queue::ArrayQueue; // Corrected import
 use parking_lot::{Mutex}; // Removed RwLock as it's not used for offset
 use std::cell::RefCell;
 // use std::sync::Arc; // Not used directly in this file
-use zerocopy::{FromBytes, IntoBytes, KnownLayout, Immutable}; // Corrected typo KnownLayout
+use zerocopy::{FromBytes, KnownLayout, FromZeroes}; // Updated for newer zerocopy API
 
 thread_local! {
     static ARENA: RefCell<Bump> = RefCell::new(Bump::with_capacity(1024 * 1024)); // 1MB per thread arena
@@ -141,7 +141,7 @@ impl Drop for HugePageAllocator {
 }
 
 // Zero-copy structures
-#[derive(FromBytes, IntoBytes, KnownLayout, Immutable, Clone, Copy, Debug)] // Added Debug
+#[derive(FromBytes, KnownLayout, FromZeroes, Clone, Copy, Debug, Default)] // Removed AsBytes due to HasPadding constraint
 #[repr(C)]
 pub struct MarketDataPacket {
     pub timestamp_ns: u64,
@@ -151,7 +151,7 @@ pub struct MarketDataPacket {
     pub account_key: [u8; 32], // Assuming Solana Pubkey
 }
 
-#[derive(FromBytes, IntoBytes, KnownLayout, Immutable, Clone, Copy, Debug)] // Added Debug
+#[derive(FromBytes, KnownLayout, FromZeroes, Clone, Copy, Debug, Default)] // Removed AsBytes due to HasPadding constraint
 #[repr(C)]
 pub struct OrderPacket {
     pub order_id: u64,
@@ -176,11 +176,11 @@ pub struct SPSCRingBuffer<T: Copy, const N: usize> {
 unsafe impl<T: Copy + Send, const N: usize> Send for SPSCRingBuffer<T, N> {}
 unsafe impl<T: Copy + Send, const N: usize> Sync for SPSCRingBuffer<T, N> {} // Sync is needed if Arc<SPSCRingBuffer> is shared
 
-impl<T: Copy, const N: usize> SPSCRingBuffer<T, N> {
+impl<T: Copy + Default, const N: usize> SPSCRingBuffer<T, N> {
     pub fn new() -> Self {
         assert!(N.is_power_of_two(), "SPSCRingBuffer size N must be a power of two.");
         Self {
-            buffer: unsafe { Box::new_zeroed().assume_init() }, // Initialize with zeros
+            buffer: Box::new(std::array::from_fn(|_| std::mem::MaybeUninit::uninit())),
             head: std::sync::atomic::AtomicUsize::new(0),
             tail: std::sync::atomic::AtomicUsize::new(0),
         }

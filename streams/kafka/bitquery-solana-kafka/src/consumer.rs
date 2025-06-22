@@ -4,11 +4,9 @@ use crate::{
     events::{SolanaEvent, EventType},
     filters::EventFilter,
     resource_manager::ResourceManager,
-    // Ensure the path to generated protobuf types is correct based on `lib.rs`
-    // If `lib.rs` has `pub mod schemas { include!(...); }`, then `crate::schemas::solana::Message`
-    schemas::solana::{BlockMessage, DexParsedBlockMessage, TokenBlockMessage},
     utils::{decompress_lz4, metrics as sdk_metrics},
 };
+use bitquery_solana_core::schemas::{BlockMessage, DexParsedBlockMessage, TokenBlockMessage};
 use bytes::Bytes; // For handling protobuf `bytes` fields
 use prost::Message as ProstMessage; // Alias for prost's Message trait
 use rdkafka::{
@@ -54,13 +52,14 @@ impl StreamConsumer {
         sdk_config: SdkMainConfig,
         resource_manager: Arc<ResourceManager>,
     ) -> Self {
+        let buffer_capacity = sdk_config.processing.buffer_size.max(100_000);
         info!("StreamConsumer initialized. Deduplication cache capacity (example): 100,000. Max processing buffer from config: {}", sdk_config.processing.buffer_size);
         Self {
             inner_kafka_consumer: Arc::new(rdkafka_consumer),
             sdk_config: Arc::new(sdk_config),
             // Initialize HashSet with a capacity based on processing config's buffer_size or a fixed large number.
             seen_signatures_cache: Arc::new(TokioMutex::new(HashSet::with_capacity(
-                sdk_config.processing.buffer_size.max(100_000) // Ensure a decent minimum capacity
+                buffer_capacity // Ensure a decent minimum capacity
             ))),
             active_event_filter: Arc::new(TokioMutex::new(None)), // No filter active by default
             resource_manager,
@@ -188,7 +187,7 @@ impl StreamConsumer {
             Ok(dp) => dp,
             Err(e) => {
                 error!("LZ4 decompression failed for message on topic '{}': {}", topic, e);
-                return Err(e); // Propagate compression error
+                return Err(Error::Other(format!("Compression error: {}", e))); // Wrap compression error
             }
         };
         let decompressed_bytes = Bytes::from(decompressed_payload); // `Bytes` for efficient Prost decoding

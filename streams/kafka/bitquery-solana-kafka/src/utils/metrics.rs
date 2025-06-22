@@ -34,7 +34,7 @@ use std::time::Instant;
 pub struct Timer {
     /// The `Instant` when the timer was started.
     pub start: Instant, // Made public for direct access if needed, e.g. in BatchProcessor
-    name: &'static str,
+    _name: &'static str,
 }
 
 impl Timer {
@@ -46,7 +46,7 @@ impl Timer {
     pub fn new(name: &'static str) -> Self {
         Self {
             start: Instant::now(),
-            name,
+            _name: name,
         }
     }
 }
@@ -56,7 +56,7 @@ impl Drop for Timer {
     /// Calculates the elapsed time since creation and records it as a histogram metric
     /// if the "metrics" feature is enabled.
     fn drop(&mut self) {
-        let duration = self.start.elapsed();
+        let _duration = self.start.elapsed();
         #[cfg(feature = "metrics")]
         {
             // The `metrics::histogram!` macro registers and records the value.
@@ -64,7 +64,7 @@ impl Drop for Timer {
             // must be initialized in the application for these metrics to be collected.
             metrics::histogram!(
                 format!("bitquery_sdk_{}_duration_seconds", self.name), // Metric name
-                duration.as_secs_f64() // Value (duration in seconds)
+                _duration.as_secs_f64() // Value (duration in seconds)
                 // Labels can be added here as key-value pairs if needed: "key" => "value".
             );
         }

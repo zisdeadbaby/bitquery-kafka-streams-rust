@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use uuid::Uuid; // For generating unique group_id for Kafka if not specified by user
+use crate::error::Result;
 
 // Note: `InitConfig` is now defined in `lib.rs` as it's specific to SDK initialization.
 
@@ -39,7 +40,7 @@ impl Config {
     /// # Returns
     /// `Ok(())` if the configuration is valid.
     /// `Err(crate::Error::Config)` if any part of the configuration is invalid.
-    pub fn validate(&self) -> crate::Result<()> {
+    pub fn validate(&self) -> Result<()> {
         self.kafka.validate().map_err(|e| crate::Error::Config(format!("Kafka config validation failed: {}", e)))?;
         self.processing.validate().map_err(|e| crate::Error::Config(format!("Processing config validation failed: {}", e)))?;
         self.resources.validate().map_err(|e| crate::Error::Config(format!("Resource limits validation failed: {}", e)))?;
@@ -111,7 +112,7 @@ impl KafkaConfig {
     }
 
     /// Validates the `KafkaConfig` settings.
-    pub fn validate(&self) -> crate::Result<()> {
+    pub fn validate(&self) -> Result<()> {
         if self.brokers.is_empty() {
             return Err(crate::Error::Config("Kafka brokers list cannot be empty.".into()));
         }
@@ -178,7 +179,7 @@ pub struct SslConfig {
 impl SslConfig {
     /// Validates the SSL configuration, checking if specified certificate files exist.
     /// Note: This checks for file existence only, not for cryptographic validity.
-    pub fn validate(&self) -> crate::Result<()> {
+    pub fn validate(&self) -> Result<()> {
         // Paths are mandatory strings in this version.
         if self.ca_cert.is_empty() || !std::path::Path::new(&self.ca_cert).exists() {
             return Err(crate::Error::Config(format!(
@@ -235,7 +236,7 @@ pub struct ProcessingConfig {
 
 impl ProcessingConfig {
     /// Validates the processing configuration settings.
-    pub fn validate(&self) -> crate::Result<()> {
+    pub fn validate(&self) -> Result<()> {
         if self.parallel_workers == 0 {
             return Err(crate::Error::Config("parallel_workers must be at least 1.".into()));
         }
@@ -285,7 +286,7 @@ pub struct ResourceLimits {
 
 impl ResourceLimits {
     /// Validates the resource limit settings.
-    pub fn validate(&self) -> crate::Result<()> {
+    pub fn validate(&self) -> Result<()> {
         if self.max_memory_bytes == 0 {
             return Err(crate::Error::Config("max_memory_bytes must be positive.".into()));
         }
@@ -333,7 +334,7 @@ pub struct RetryConfig {
 
 impl RetryConfig {
     /// Validates the retry configuration settings.
-    pub fn validate(&self) -> crate::Result<()> {
+    pub fn validate(&self) -> Result<()> {
         if self.multiplier < 1.0 {
             return Err(crate::Error::Config("Retry multiplier must be >= 1.0.".into()));
         }

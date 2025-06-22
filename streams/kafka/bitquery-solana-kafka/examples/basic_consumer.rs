@@ -1,4 +1,4 @@
-use bitquery_solana_sdk::{
+use bitquery_solana_core::{
     // SDK Initialization
     init_with_config, InitConfig, // Using InitConfig from lib.rs for SDK setup
     // Core SDK Client and Configuration
@@ -9,7 +9,7 @@ use bitquery_solana_sdk::{
     Result as SdkResult,
 };
 use std::sync::Arc; // For Arc-wrapping the EventProcessor
-use tracing::{info, error, warn, debug, trace}; // Logging macros
+use tracing::{info, error, warn, trace}; // Logging macros
 // `futures::StreamExt` is not directly needed if using `client.next_event()` in a loop
 // or `client.process_events()`.
 

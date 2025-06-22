@@ -1,12 +1,12 @@
-use ahash::AHashMap;
+use std::collections::HashMap; // Changed from AHashMap to HashMap
 use memmap2::{MmapMut, MmapOptions};
-use parking_lot::RwLock;
-use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize, Archived, Infallible}; // Aliased for clarity
+use std::sync::RwLock; // Use std::sync::RwLock instead of parking_lot for Send compatibility
+use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize, Infallible}; // Aliased for clarity
 use solana_sdk::pubkey::Pubkey;
 use std::fs::OpenOptions;
-use std::path::Path; // For path manipulation
+use std::path::{Path, PathBuf}; // For path manipulation
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH}; // For timestamps
+use std::time::{SystemTime, UNIX_EPOCH, Instant}; // For timestamps
 
 const DEFAULT_MMAP_SIZE_MB: u64 = 64; // Increased default size for market state
 const MMAP_FILE_NAME: &str = "ops_node_market_state.mmap";
@@ -46,8 +46,8 @@ pub struct PoolInfoV1 { // Added V1
 #[archive(check_bytes)]
 #[archive_attr(derive(Debug))]
 pub struct MarketStateV1 { // Added V1
-    pub tokens: AHashMap<[u8; 32], TokenInfoV1>, // Use HashMap for faster lookups by mint
-    pub pools: AHashMap<[u8; 32], PoolInfoV1>,   // Use HashMap for faster lookups by pool address
+    pub tokens: HashMap<[u8; 32], TokenInfoV1>, // Use HashMap for faster lookups by mint
+    pub pools: HashMap<[u8; 32], PoolInfoV1>,   // Use HashMap for faster lookups by pool address
     pub last_processed_slot: u64, // Slot up to which data is consistent
     pub last_persisted_timestamp_ns: u64, // Nanosecond timestamp of last persist
 }
@@ -58,8 +58,8 @@ pub struct SharedStateManager {
     // In-memory caches for quick access. These are primary if mmap is for persistence/backup.
     // If mmap is the source of truth, these might be read-through caches.
     // Current design implies these caches are primary and mmap is for backup/restore.
-    token_cache: Arc<RwLock<AHashMap<Pubkey, TokenInfoV1>>>, // Keyed by Pubkey for convenience
-    pool_cache: Arc<RwLock<AHashMap<Pubkey, PoolInfoV1>>>,   // Keyed by Pubkey
+    token_cache: Arc<RwLock<HashMap<Pubkey, TokenInfoV1>>>, // Keyed by Pubkey for convenience
+    pool_cache: Arc<RwLock<HashMap<Pubkey, PoolInfoV1>>>,   // Keyed by Pubkey
     last_processed_slot: Arc<RwLock<u64>>,
 }
 
@@ -91,8 +91,8 @@ impl SharedStateManager {
         let manager = Self {
             mmap_file_path: mmap_file_path.clone(),
             mmap: Arc::new(RwLock::new(mmap)),
-            token_cache: Arc::new(RwLock::new(AHashMap::new())),
-            pool_cache: Arc::new(RwLock::new(AHashMap::new())),
+            token_cache: Arc::new(RwLock::new(HashMap::new())),
+            pool_cache: Arc::new(RwLock::new(HashMap::new())),
             last_processed_slot: Arc::new(RwLock::new(0)),
         };
 
@@ -109,36 +109,36 @@ impl SharedStateManager {
 
     pub fn update_token(&self, token: TokenInfoV1) {
         let mint_pubkey = Pubkey::new_from_array(token.mint);
-        self.token_cache.write().insert(mint_pubkey, token);
+        self.token_cache.write().unwrap().insert(mint_pubkey, token);
     }
 
     pub fn update_pool(&self, pool: PoolInfoV1) {
         let pool_pubkey = Pubkey::new_from_array(pool.address);
-        self.pool_cache.write().insert(pool_pubkey, pool);
+        self.pool_cache.write().unwrap().insert(pool_pubkey, pool);
     }
 
     pub fn get_token(&self, mint: &Pubkey) -> Option<TokenInfoV1> {
-        self.token_cache.read().get(mint).cloned()
+        self.token_cache.read().unwrap().get(mint).cloned()
     }
 
     pub fn get_pool(&self, address: &Pubkey) -> Option<PoolInfoV1> {
-        self.pool_cache.read().get(address).cloned()
+        self.pool_cache.read().unwrap().get(address).cloned()
     }
 
     pub fn get_all_tokens(&self) -> Vec<TokenInfoV1> {
-        self.token_cache.read().values().cloned().collect()
+        self.token_cache.read().unwrap().values().cloned().collect()
     }
 
     pub fn get_all_pools(&self) -> Vec<PoolInfoV1> {
-        self.pool_cache.read().values().cloned().collect()
+        self.pool_cache.read().unwrap().values().cloned().collect()
     }
 
     pub fn get_last_processed_slot(&self) -> u64 {
-        *self.last_processed_slot.read()
+        *self.last_processed_slot.read().unwrap()
     }
 
     pub fn set_last_processed_slot(&self, slot: u64) {
-        let mut current_slot = self.last_processed_slot.write();
+        let mut current_slot = self.last_processed_slot.write().unwrap();
         if slot > *current_slot {
             *current_slot = slot;
         }
@@ -149,9 +149,9 @@ impl SharedStateManager {
         let start_time = Instant::now();
         tracing::debug!("Starting persistence of market state to mmap file: {:?}", self.mmap_file_path);
 
-        let tokens_map: AHashMap<[u8; 32], TokenInfoV1> = self.token_cache.read()
+        let tokens_map: HashMap<[u8; 32], TokenInfoV1> = self.token_cache.read().unwrap()
             .iter().map(|(pk, ti)| (pk.to_bytes(), ti.clone())).collect();
-        let pools_map: AHashMap<[u8; 32], PoolInfoV1> = self.pool_cache.read()
+        let pools_map: HashMap<[u8; 32], PoolInfoV1> = self.pool_cache.read().unwrap()
             .iter().map(|(pk, pi)| (pk.to_bytes(), pi.clone())).collect();
 
         let state = MarketStateV1 {
@@ -164,14 +164,11 @@ impl SharedStateManager {
         // Rkyv serialization can be quite large. For very large states, consider streaming or chunking.
         // The buffer size for `to_bytes` should be estimated or generous.
         // Max size of mmap is the hard limit.
-        let mut mmap_guard = self.mmap.write();
+        let mut mmap_guard = self.mmap.write().unwrap();
         let buffer_len = mmap_guard.len();
-        let mut writer = rkyv::util::AlignedVec::with_capacity(buffer_len.min(1024 * 1024 * 16)); // Cap initial alloc
 
-        rkyv::serialize_into_stdvec(&state, &mut writer)
+        let bytes = rkyv::to_bytes::<_, 256>(&state)
             .map_err(|e| format!("Rkyv serialization error: {}", e))?;
-
-        let bytes = writer.into_inner();
 
         if bytes.len() > buffer_len {
             return Err(format!(
@@ -198,7 +195,7 @@ impl SharedStateManager {
     pub fn load_from_mmap(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let start_time = Instant::now();
         tracing::debug!("Starting load of market state from mmap file: {:?}", self.mmap_file_path);
-        let mmap_guard = self.mmap.read(); // Read lock is enough for loading
+        let mmap_guard = self.mmap.read().unwrap(); // Read lock is enough for loading
 
         // Basic check: if the mmap looks empty (e.g., all zeros at the start), assume no valid state.
         // A more robust check would involve a magic number or checksum at the beginning.
@@ -220,19 +217,19 @@ impl SharedStateManager {
             .map_err(|e| format!("Rkyv deserialization error: {}", e))?;
 
         // Populate caches
-        let mut token_cache_writer = self.token_cache.write();
+        let mut token_cache_writer = self.token_cache.write().unwrap();
         token_cache_writer.clear();
         for (mint_bytes, token_info) in state.tokens {
             token_cache_writer.insert(Pubkey::new_from_array(mint_bytes), token_info);
         }
 
-        let mut pool_cache_writer = self.pool_cache.write();
+        let mut pool_cache_writer = self.pool_cache.write().unwrap();
         pool_cache_writer.clear();
         for (pool_bytes, pool_info) in state.pools {
             pool_cache_writer.insert(Pubkey::new_from_array(pool_bytes), pool_info);
         }
 
-        *self.last_processed_slot.write() = state.last_processed_slot;
+        *self.last_processed_slot.write().unwrap() = state.last_processed_slot;
 
         tracing::info!(
             "Market state loaded from mmap file {:?} successfully in {:.2}ms. {} tokens, {} pools. Last processed slot: {}. Last persisted: {}ns.",
@@ -282,7 +279,7 @@ pub struct CompletedTradeV1 { // Added V1
 pub struct PositionManager {
     // Active positions: Keyed by a unique position ID (e.g., mint + entry_timestamp_ns or a UUID)
     // For simplicity, if one position per mint is assumed by a strategy:
-    active_positions: Arc<RwLock<AHashMap<Pubkey, PositionV1>>>, // Key: token_mint Pubkey
+    active_positions: Arc<RwLock<HashMap<Pubkey, PositionV1>>>, // Key: token_mint Pubkey
     historical_trades: Arc<RwLock<Vec<CompletedTradeV1>>>, // Could also be persisted
     // If persisting historical_trades, add mmap logic similar to MarketState
 }
@@ -290,14 +287,14 @@ pub struct PositionManager {
 impl PositionManager {
     pub fn new() -> Self {
         Self {
-            active_positions: Arc::new(RwLock::new(AHashMap::new())),
+            active_positions: Arc::new(RwLock::new(HashMap::new())),
             historical_trades: Arc::new(RwLock::new(Vec::with_capacity(1000))), // Pre-allocate some capacity
         }
     }
 
     pub fn open_position(&self, position: PositionV1) -> Result<(), String> {
         let mint_pubkey = Pubkey::new_from_array(position.token_mint);
-        let mut positions_writer = self.active_positions.write();
+        let mut positions_writer = self.active_positions.write().unwrap();
         if positions_writer.contains_key(&mint_pubkey) {
             return Err(format!("Position already exists for mint {}", mint_pubkey));
         }
@@ -314,9 +311,12 @@ impl PositionManager {
         exit_price_fp: u64,
         exit_reason: String,
     ) -> Option<CompletedTradeV1> {
-        let mut positions_writer = self.active_positions.write();
+        let mut positions_writer = self.active_positions.write().unwrap();
         if let Some(position) = positions_writer.remove(mint) {
-            let pnl_fp = (exit_price_fp as i128 - position.entry_price_fp as i128) * position.quantity_tokens as i128 / (10_u64.pow(position_decimals_from_mint(mint, &self.active_positions /* this needs token_cache access */) as u32) as i128); // Simplified PNL calculation
+            // For now, assume 6 decimals as a common default for tokens
+            // In production, this should be passed as a parameter or looked up from token cache
+            let token_decimals = 6u8; // Common for many SPL tokens
+            let _pnl_fp = (exit_price_fp as i128 - position.entry_price_fp as i128) * position.quantity_tokens as i128 / (10_u64.pow(token_decimals as u32) as i128); // Simplified PNL calculation
             // This PNL calculation needs refinement based on how prices and quantities are represented
             // e.g., if quantity_tokens is in base units and price is quote_per_base,
             // pnl_quote = (exit_price_base_units - entry_price_base_units) * quantity_tokens / price_base_unit_divisor
@@ -355,7 +355,7 @@ impl PositionManager {
                 strategy_id: position.strategy_id.clone(),
             };
 
-            self.historical_trades.write().push(trade.clone());
+            self.historical_trades.write().unwrap().push(trade.clone());
             tracing::info!("Closed position for {}: Trade: {:?}", mint, trade);
             Some(trade)
         } else {
@@ -365,27 +365,28 @@ impl PositionManager {
     }
 
     // Helper to get decimals, needs access to token_cache or pass TokenInfo
-    fn position_decimals_from_mint(&self, _mint: &Pubkey, _token_cache: &AHashMap<Pubkey, TokenInfoV1>) -> u8 {
+    #[allow(dead_code)]
+    fn position_decimals_from_mint(&self, _mint: &Pubkey, _token_cache: &HashMap<Pubkey, TokenInfoV1>) -> u8 {
         // TODO: Implement actual lookup
         // token_cache.get(mint).map_or(0, |ti| ti.decimals)
         6 // Placeholder
     }
 
     pub fn get_active_position(&self, mint: &Pubkey) -> Option<PositionV1> {
-        self.active_positions.read().get(mint).cloned()
+        self.active_positions.read().unwrap().get(mint).cloned()
     }
 
     pub fn get_all_active_positions(&self) -> Vec<PositionV1> {
-        self.active_positions.read().values().cloned().collect()
+        self.active_positions.read().unwrap().values().cloned().collect()
     }
 
     pub fn get_historical_trades(&self) -> Vec<CompletedTradeV1> {
-        self.historical_trades.read().clone()
+        self.historical_trades.read().unwrap().clone()
     }
 
     // Basic trading statistics calculation
     pub fn get_trading_stats(&self) -> TradingStats {
-        let trades = self.historical_trades.read();
+        let trades = self.historical_trades.read().unwrap();
 
         let total_trades = trades.len();
         if total_trades == 0 {

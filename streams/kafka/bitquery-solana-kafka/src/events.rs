@@ -195,7 +195,7 @@ mod tests {
                 "amount_base": "150.75",
                 "price": "2.5",
                 "custom_string": "hello",
-                "custom_u64": 123456789012345,
+                "custom_u64": 123456789012345i64,
                 "custom_bool": true
             }),
         };

@@ -1,12 +1,13 @@
 #[cfg(test)]
 mod tests {
-    use bitquery_solana_sdk::{
+    use bitquery_solana_core::{
         // Main SDK Config and its components
         Config as SdkFullConfig, InitConfig, // InitConfig from lib.rs
         KafkaConfig, SslConfig, ProcessingConfig, ResourceLimits, RetryConfig,
         // SDK Error type for asserting validation results
         Error as SdkError,
     };
+    use tracing::warn;
     use std::fs::{self, File}; // For filesystem operations (creating dummy cert files/dirs)
     use std::path::Path;
     use std::time::Duration;

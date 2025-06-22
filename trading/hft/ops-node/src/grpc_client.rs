@@ -2,10 +2,8 @@ use crate::config::Config;
 use crate::error::{OpsNodeError, Result};
 use crate::memory::MarketDataPacket; // Assuming MarketDataPacket is relevant for callbacks
 use futures::StreamExt;
-use parking_lot::RwLock; // Using RwLock for GrpcManager if clients need to be replaced/reconfigured
 use secrecy::{ExposeSecret, Secret};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
 use std::time::Duration;
 use tonic::metadata::{Ascii, MetadataValue};
 use tonic::transport::{Channel, ClientTlsConfig, Endpoint}; // Added Endpoint
@@ -13,15 +11,13 @@ use tonic::{Request, Status};
 // use tower::ServiceBuilder; // Not explicitly used in the provided snippet, can be added if interceptors are built with ServiceBuilder
 
 // Import generated protobuf code.
-// The paths "grpc_generated/yellowstone" and "grpc_generated/jito"
-// tell tonic::include_proto! to look for yellowstone.rs and jito.rs
-// inside the directory $OUT_DIR/grpc_generated/
-mod proto {
+// Include the generated files directly since they're in src/generated
+pub mod proto {
     pub mod yellowstone {
-        tonic::include_proto!("grpc_generated/yellowstone");
+        include!("generated/yellowstone.rs");
     }
     pub mod jito {
-        tonic::include_proto!("grpc_generated/jito");
+        include!("generated/jito.rs");
     }
 }
 
@@ -46,12 +42,12 @@ pub struct GrpcManager {
     // if GrpcManager needs to be cloned or shared across threads directly.
     // However, GrpcManager itself is usually Arc-wrapped if shared.
     yellowstone_pool: ConnectionPool<GeyserClient<Channel>>,
-    jito_pool: ConnectionPool<ShredStreamClient<Channel>>,
+    _jito_pool: ConnectionPool<ShredStreamClient<Channel>>,
     // API keys/tokens can be stored if they are static per manager instance
     // Or passed into methods if they can change per call.
     // For this structure, assuming they are tied to the manager's lifetime.
     yellowstone_api_key: Secret<String>, // Specific to Yellowstone
-    jito_auth_token: Option<Secret<String>>, // Specific to Jito
+    _jito_auth_token: Option<Secret<String>>, // Specific to Jito
 }
 
 impl GrpcManager {
@@ -79,9 +75,9 @@ impl GrpcManager {
 
         Ok(Self {
             yellowstone_pool,
-            jito_pool,
+            _jito_pool: jito_pool,
             yellowstone_api_key,
-            jito_auth_token,
+            _jito_auth_token: jito_auth_token,
         })
     }
 
@@ -121,7 +117,7 @@ impl GrpcManager {
                 match message_result {
                     Ok(update) => {
                         // Process based on the type of update
-                        if let Some(update_oneof) = update.update_oneof {
+                        if let Some(ref update_oneof) = update.update_oneof {
                             match update_oneof {
                                 UpdateOneof::Account(account_update) => {
                                     // Example: Convert to MarketDataPacket
@@ -141,7 +137,7 @@ impl GrpcManager {
                                     tracing::trace!("Received slot update via account stream: {:?}", slot_info);
                                     // Handle slot updates if necessary, or use dedicated slot stream
                                 }
-                                UpdateOneof::Ping(_) => {
+                                UpdateOneof::Pong(_) => {
                                     tracing::trace!("Received ping on Yellowstone stream");
                                     // Respond to ping or handle keepalive
                                 }
@@ -173,7 +169,7 @@ impl GrpcManager {
         let mut client = self.yellowstone_pool.get_client().clone();
         let token_metadata = create_auth_metadata(self.yellowstone_api_key.expose_secret())?;
 
-        let mut request = Request::new(GetSlotRequest {}); // This is for unary GetSlot, not streaming
+        let _request = Request::new(GetSlotRequest {}); // This is for unary GetSlot, not streaming
         // For streaming slots, you'd typically use the SubscribeRequest with a filter for slots.
         // The proto definition for GetSlot does not seem to indicate a streaming response.
         // Assuming the intention was to use the Subscribe stream for slots:
@@ -201,7 +197,7 @@ impl GrpcManager {
                     Ok(update) => {
                         if let Some(UpdateOneof::Slot(slot_info)) = update.update_oneof {
                              callback(slot_info.slot);
-                        } else if let Some(UpdateOneof::Ping(_)) = update.update_oneof {
+                        } else if let Some(UpdateOneof::Pong(_)) = update.update_oneof {
                             tracing::trace!("Received ping on slot stream");
                         }
                     }
@@ -235,7 +231,7 @@ fn create_auth_metadata(token_str: &str) -> Result<MetadataValue<Ascii>> {
 struct ConnectionPool<T: Clone> { // Added T: Clone constraint
     clients: Vec<T>,
     current_idx: AtomicUsize, // Renamed for clarity
-    pool_name: String, // For logging
+    _pool_name: String, // For logging
 }
 
 impl<T: Clone> ConnectionPool<T> {
@@ -290,7 +286,7 @@ impl<T: Clone> ConnectionPool<T> {
         Ok(Self {
             clients,
             current_idx: AtomicUsize::new(0),
-            pool_name: pool_name.to_string(),
+            _pool_name: pool_name.to_string(),
         })
     }
 

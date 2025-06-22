@@ -1,9 +1,9 @@
 use hdrhistogram::Histogram;
 use parking_lot::Mutex;
-use prometheus::{Encoder, Opts, Registry, TextEncoder, HistogramVec, IntCounterVec, GaugeVec}; // Added HistogramVec, IntCounterVec, GaugeVec
+use prometheus::{Encoder, Opts, Registry, TextEncoder, HistogramVec, HistogramOpts, IntCounterVec, GaugeVec}; // Added HistogramOpts
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 // TSC (Time Stamp Counter) related functionalities
 // These are highly platform-dependent (x86_64) and may need adjustments or alternatives for other architectures.
@@ -287,7 +287,7 @@ impl MetricsExporter {
     pub fn new() -> Self {
         let registry = Registry::new();
 
-        let latency_opts = Opts::new("op_latency_seconds", "Operation latency in seconds")
+        let latency_opts = HistogramOpts::new("op_latency_seconds", "Operation latency in seconds")
             .namespace("ops_node")
             .subsystem("performance");
         let op_latency_seconds = HistogramVec::new(

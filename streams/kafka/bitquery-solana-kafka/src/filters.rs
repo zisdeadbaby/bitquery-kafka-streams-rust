@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize}; // For potential serialization of filter co
 ///
 /// All filter conditions are optional. If a condition is `None`, it is not applied.
 /// For an event to pass the filter, it must satisfy all specified (non-`None`) conditions.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct EventFilter {
     /// A list of `EventType`s. If set, the event's type must be one of these.
     pub event_types: Option<Vec<EventType>>,
@@ -108,7 +108,7 @@ impl EventFilter {
 
         // Apply signature filter
         if let Some(ref sigs) = self.signatures {
-            if !sigs.is_empty() && !sigs.contains(event.signature()) {
+            if !sigs.is_empty() && !sigs.contains(&event.signature().to_string()) {
                 return false;
             }
         }

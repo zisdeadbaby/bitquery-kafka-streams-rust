@@ -9,7 +9,7 @@ use crate::{
 use async_channel::{bounded, Receiver as AsyncReceiver, Sender as AsyncSender}; // Alias for clarity
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::time::{timeout, Instant as TokioInstant};
+use tokio::time::{Instant as TokioInstant};
 use tracing::{debug, info, warn, error};
 
 /// `BatchProcessor` orchestrates the collection of individual `SolanaEvent`s into

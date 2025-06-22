@@ -16,6 +16,9 @@ pub enum OpsNodeError {
     #[error("Solana client error: {0}")]
     SolanaClient(#[from] solana_client::client_error::ClientError),
 
+    #[error("Task join error: {0}")]
+    TaskJoin(#[from] tokio::task::JoinError),
+
     #[error("Transaction failed: {signature}")]
     TransactionFailed { signature: Signature },
 

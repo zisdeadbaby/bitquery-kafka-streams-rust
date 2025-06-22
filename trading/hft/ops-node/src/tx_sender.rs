@@ -1,12 +1,12 @@
 use crate::config::Config;
 use crate::error::{OpsNodeError, Result};
 use crate::grpc_client::proto::jito::{Packet as JitoPacket, PacketBatch as JitoPacketBatch, shred_stream_client::ShredStreamClient as JitoShredStreamClient}; // For Jito integration
-use ahash::AHashMap;
-use parking_lot::RwLock;
+use std::collections::HashMap;
+use std::sync::RwLock;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_client::rpc_client::RpcClient as BlockingRpcClient; // For operations that might be better blocking
 use solana_client::rpc_config::{RpcSendTransactionConfig, RpcSimulateTransactionConfig}; // For simulate
-use solana_client::rpc_response::{RpcPrioritizationFee, RpcSimulateTransactionResult}; // For priority fees and simulation
+use solana_client::rpc_response::RpcSimulateTransactionResult; // For simulation
 use solana_sdk::{
     commitment_config::{CommitmentConfig, CommitmentLevel},
     compute_budget::ComputeBudgetInstruction,
@@ -24,9 +24,11 @@ use tokio::sync::Semaphore;
 use tonic::transport::Channel as TonicChannel; // For Jito client
 
 const RECENT_PRIORITY_FEES_ACCOUNTS_LIMIT: usize = 128; // Solana limit for getRecentPriorityFees
+#[allow(dead_code)]
 const DEFAULT_COMPUTE_UNITS: u32 = 200_000; // Fallback compute units
 const MAX_COMPUTE_UNITS: u32 = 1_400_000; // Max allowable compute units
 const COMPUTE_UNIT_ESTIMATION_BUFFER_PERCENT: f64 = 0.15; // 15% buffer for simulation
+#[allow(dead_code)]
 const JITO_TIP_ACCOUNTS: [&str; 3] = [ // Jito tip accounts
     "96gYZGLnJYVFmbjzopPSU6QiEV5fGq5deL4ccVNZGSFV",
     "HFqU5x63VTqvQss8hp11i4wVV8tb4LsUajnpVa㈜FH4", // Typo in original, assuming JitoPayer
@@ -39,7 +41,7 @@ pub struct TransactionSender {
     blocking_rpc_client: Arc<BlockingRpcClient>, // Sync RPC client for specific tasks like simulate
     jito_client: Option<Arc<JitoShredStreamClient<TonicChannel>>>, // Optional Jito client
     priority_optimizer: PriorityFeeOptimizer,
-    compute_unit_cache: Arc<RwLock<AHashMap<String, u32>>>, // Cache key: sorted program IDs string
+    compute_unit_cache: Arc<RwLock<HashMap<String, u32>>>, // Cache key: sorted program IDs string
     rate_limiter: Arc<Semaphore>,
     config: Arc<Config>,
     keypair: Arc<Keypair>, // Payer keypair
@@ -71,7 +73,7 @@ impl TransactionSender {
         }
 
         let priority_optimizer = PriorityFeeOptimizer::new(rpc_client.clone(), config.clone());
-        let compute_unit_cache = Arc::new(RwLock::new(AHashMap::new()));
+        let compute_unit_cache = Arc::new(RwLock::new(HashMap::new()));
         // Max concurrent *pending* operations to Solana, not just submissions
         let rate_limiter = Arc::new(Semaphore::new(config.performance.max_concurrent_operations));
 
@@ -142,8 +144,6 @@ impl TransactionSender {
             ..Default::default()
         };
 
-        let rpc_future = self.send_via_rpc(versioned_tx.clone(), rpc_send_config);
-
         let jito_future_opt = if self.config.trading.enable_jito_bundles && self.jito_client.is_some() {
             Some(self.send_via_jito(versioned_tx.clone(), priority_fee_lamports))
         } else {
@@ -166,17 +166,17 @@ impl TransactionSender {
                         },
                         Err(e) => {
                             tracing::warn!("Jito submission failed: {:?}. Falling back to RPC.", e);
-                            signature = rpc_future.await?; // Await RPC result
+                            signature = self.send_via_rpc(versioned_tx.clone(), rpc_send_config).await?; // Create a new future
                         }
                     }
                 },
-                rpc_res = rpc_future => {
+                rpc_res = self.send_via_rpc(versioned_tx.clone(), rpc_send_config) => {
                     signature = rpc_res?;
                     tracing::info!("RPC submission successful: {}", signature);
                 }
             }
         } else {
-            signature = rpc_future.await?;
+            signature = self.send_via_rpc(versioned_tx.clone(), rpc_send_config).await?;
             tracing::info!("RPC submission successful (Jito disabled/unavailable): {}", signature);
         }
 
@@ -274,13 +274,19 @@ impl TransactionSender {
         lookup_table_accounts: Option<&[solana_sdk::message::AddressLookupTableAccount]>,
     ) -> Result<(u32, Hash)> {
         let cache_key = Self::generate_instruction_cache_key(instructions);
-        if let Some(cached_units) = self.compute_unit_cache.read().get(&cache_key) {
-            if *cached_units > 0 {
+        
+        // Check cache first, without holding lock across await
+        let cached_units = {
+            self.compute_unit_cache.read().unwrap().get(&cache_key).copied()
+        };
+        
+        if let Some(cached_units) = cached_units {
+            if cached_units > 0 {
                  // Need a recent blockhash anyway
                  let recent_blockhash = self.rpc_client.get_latest_blockhash().await
                     .map_err(|e| OpsNodeError::SolanaClient(e))?;
                 tracing::debug!("Using cached CUs: {} for key: {}", cached_units, cache_key);
-                return Ok((*cached_units, recent_blockhash));
+                return Ok((cached_units, recent_blockhash));
             }
         }
 
@@ -316,6 +322,7 @@ impl TransactionSender {
             encoding: Some(solana_transaction_status::UiTransactionEncoding::Base64),
             accounts: None, // Not overriding accounts for simulation
             min_context_slot: None, // Added
+            inner_instructions: false, // Don't need inner instructions for simulation
         };
 
         // Use blocking client for simulation as it can be slow and we want the result before proceeding
@@ -326,13 +333,13 @@ impl TransactionSender {
             })?;
 
         match sim_result.value {
-            RpcSimulateTransactionResult { err: Some(tx_err), logs: Some(logs), accounts: _, units_consumed, return_data: _ } => {
+            RpcSimulateTransactionResult { err: Some(tx_err), logs: Some(logs), accounts: _, units_consumed: _, return_data: _, inner_instructions: _, replacement_blockhash: _ } => {
                 tracing::warn!("Simulation failed for key {}: {:?}. Logs: {:?}", cache_key, tx_err, logs.join("\n"));
                 // If simulation fails, we can't reliably estimate CUs. Fallback or error.
                 // Check for specific errors that might still allow CU estimation or indicate a permanent issue.
                 if tx_err == TransactionError::WouldExceedMaxBlockCostLimit || tx_err.to_string().contains("would exceed block cost limit") {
                      tracing::warn!("Simulation indicates transaction would exceed max block cost limit. Capping at MAX_COMPUTE_UNITS.");
-                     self.compute_unit_cache.write().insert(cache_key, MAX_COMPUTE_UNITS);
+                     self.compute_unit_cache.write().unwrap().insert(cache_key, MAX_COMPUTE_UNITS);
                      return Ok((MAX_COMPUTE_UNITS, recent_blockhash));
                 }
                 // For other errors, it's safer to assume a higher CU or error out.
@@ -340,10 +347,10 @@ impl TransactionSender {
                 // Let's return an error that can be handled upstream.
                 return Err(OpsNodeError::Strategy(format!("Transaction simulation failed: {:?}. Logs: {:?}", tx_err, logs)));
             }
-            RpcSimulateTransactionResult { err: None, units_consumed: Some(consumed_units), logs: _, accounts: _, return_data: _ } => {
+            RpcSimulateTransactionResult { err: None, units_consumed: Some(consumed_units), logs: _, accounts: _, return_data: _, inner_instructions: _, replacement_blockhash: _ } => {
                 let estimated_cus = (consumed_units as f64 * (1.0 + COMPUTE_UNIT_ESTIMATION_BUFFER_PERCENT)) as u32;
                 tracing::debug!("Simulation successful for key {}. Consumed CUs: {}, Estimated with buffer: {}", cache_key, consumed_units, estimated_cus);
-                self.compute_unit_cache.write().insert(cache_key.clone(), estimated_cus);
+                self.compute_unit_cache.write().unwrap().insert(cache_key.clone(), estimated_cus);
                 Ok((estimated_cus, recent_blockhash))
             }
             _ => {
@@ -395,7 +402,7 @@ impl PriorityFeeOptimizer {
         };
 
         let rpc_priority_fees = self.rpc_client
-            .get_recent_priority_fees(&fee_accounts)
+            .get_recent_prioritization_fees(&fee_accounts)
             .await
             .map_err(|e| {
                 tracing::warn!("Failed to get recent priority fees: {}", e);

@@ -1,12 +1,9 @@
 use crate::{
     config::ResourceLimits,
     error::{Error, Result as SdkResult}, // Using SdkResult consistently
-    utils::metrics as sdk_metrics, // For metrics calls
 };
-use parking_lot::RwLock as ParkingRwLock; // Using parking_lot::RwLock for its performance characteristics
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 use tokio::time::interval;
 use tracing::{debug, info, warn};
 

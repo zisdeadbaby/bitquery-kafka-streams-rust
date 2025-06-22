@@ -9,10 +9,12 @@ use crate::{
     resource_manager::ResourceManager,
 };
 use rdkafka::config::ClientConfig as RdKafkaClientConfig; // For Kafka client configuration
+use rdkafka::consumer::StreamConsumer as RdKafkaStreamConsumer;
 // No direct import of rdkafka::consumer::Consumer trait, as StreamConsumer encapsulates this.
 use std::sync::Arc;
 use tokio::sync::RwLock; // For read-write lock on shared components like StreamConsumer
 use tracing::{info, debug, error, warn}; // Logging utilities
+use crate::Error;
 
 /// `BitqueryClient` is the primary interface for applications to interact with the SDK.
 ///
@@ -78,8 +80,8 @@ impl BitqueryClient {
     /// Applies an `EventFilter` to the `StreamConsumer`.
     /// Once set, only events matching the filter criteria will be yielded by `next_event()`.
     pub async fn set_filter(&self, filter: EventFilter) -> SdkResult<()> {
-        let mut consumer_guard = self.consumer.write().await;
-        consumer_guard.set_filter(filter);
+        let consumer_guard = self.consumer.write().await;
+        consumer_guard.set_filter(filter).await;
         info!("Event filter has been set for the BitqueryClient.");
         Ok(())
     }
