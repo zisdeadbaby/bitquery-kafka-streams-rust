@@ -4,9 +4,9 @@ use bitquery_solana_kafka::{
     // Core SDK Client and Configuration
     BitqueryClient, Config as SdkFullConfig, // Aliasing Config to SdkFullConfig for clarity
     // Event Handling & Processing
-    SolanaEvent, EventProcessor, TransactionProcessor, // Standard event types and processors
+    EventProcessor, TransactionProcessor, // Standard event types and processors
     // SDK's Result type for error handling
-    Result as SdkResult,
+    error::Result as SdkResult,
 };
 use std::sync::Arc; // For Arc-wrapping the EventProcessor
 use tracing::{info, error, warn, trace}; // Logging macros
