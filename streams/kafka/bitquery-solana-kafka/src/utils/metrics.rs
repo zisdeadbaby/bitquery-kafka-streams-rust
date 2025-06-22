@@ -124,6 +124,44 @@ pub fn record_batch_processed(size: usize, duration_ms: f64) {
     }
 }
 
+/// Records metrics for processed DEX trades.
+///
+/// Metrics recorded:
+///   - `dex_trades_processed_total`: A counter for the total number of DEX trades processed.
+///   - `trade_value_usd`: A histogram for the value of trades in USD.
+///   - `kafka_consumer_lag`: A gauge for the Kafka consumer lag in message offsets.
+///
+/// # Arguments
+/// * `exchange_name`: The name of the exchange where the trade occurred.
+/// * `pair`: The trading pair involved in the trade (e.g., "BTC/USD").
+/// * `trade_amount_usd`: The amount of the trade in USD, used for histogram metric.
+/// * `lag_messages`: The number of messages behind the consumer is in the Kafka topic.
+/// * `topic`: The Kafka topic name, used as a label for the lag metric.
+/// * `partition`: The Kafka partition number, used as a label for the lag metric.
+pub fn record_dex_trade(exchange_name: &str, pair: &str, trade_amount_usd: f64, lag_messages: u64, topic: &str, partition: i32) {
+    #[cfg(feature = "metrics")]
+    {
+        metrics::counter!("dex_trades_processed_total", 1, 
+            "exchange" => exchange_name,
+            "token_pair" => pair);
+        
+        metrics::histogram!("trade_value_usd", trade_amount_usd);
+        
+        metrics::gauge!("kafka_consumer_lag", lag_messages as f64,
+            "topic" => topic,
+            "partition" => partition.to_string());
+    }
+    #[cfg(not(feature = "metrics"))]
+    {
+        let _ = exchange_name;
+        let _ = pair;
+        let _ = trade_amount_usd;
+        let _ = lag_messages;
+        let _ = topic;
+        let _ = partition;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*; // Import items from the parent module (metrics.rs)
@@ -159,6 +197,14 @@ mod tests {
         // Test that record_batch_processed can be called with various inputs.
         record_batch_processed(150, 75.5); // Example: 150 events in 75.5 ms
         record_batch_processed(0, 0.1);   // Example: An empty batch processed quickly
+        // No explicit assertion; ensures the function calls don't panic.
+    }
+
+    #[test]
+    fn record_dex_trade_is_callable() {
+        // Test that record_dex_trade can be called with various inputs.
+        record_dex_trade("binance", "BTC/USD", 50000.0, 100, "trade_topic", 0);
+        record_dex_trade("coinbase", "ETH/USD", 2500.0, 50, "trade_topic", 1);
         // No explicit assertion; ensures the function calls don't panic.
     }
 }

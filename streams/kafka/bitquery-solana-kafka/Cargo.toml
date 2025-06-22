@@ -55,6 +55,9 @@ metrics = { workspace = true }
 # Optional high-performance allocator
 jemallocator = { workspace = true, optional = true }
 
+# Health check example dependencies
+warp = "0.3"
+
 [dev-dependencies]
 num_cpus = "1.16"
 mockall = "0.12"
@@ -81,3 +84,7 @@ path = "examples/dex_trading_bot.rs"
 [[example]]
 name = "high_volume_processor"
 path = "examples/high_volume_processor.rs"
+
+[[example]]
+name = "health_check"
+path = "examples/health_check.rs"

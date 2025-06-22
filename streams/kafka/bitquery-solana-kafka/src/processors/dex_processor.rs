@@ -36,10 +36,18 @@ impl Default for DexProcessor {
         Self {
             min_amount_usd: 1000.0,
             target_programs: vec![
-                "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8".to_string(), // Raydium AMM Program ID
-                "JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB".to_string(),  // Jupiter Aggregator Program ID
-                // Other common DEXs could be added here, e.g., Orca's Whirlpool factory.
-                // "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc".to_string(), // Orca Whirlpools Program
+                // Pump.fun
+                "6EF8rrecthR5Dkzon8Nwu78hRRfgKubJ14M5uBEwF6P".to_string(),
+                // Raydium AMM V4
+                "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8".to_string(),
+                // Raydium CLMM
+                "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK".to_string(),
+                // PumpSwap
+                "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA".to_string(),
+                // Orca Whirlpools
+                "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc".to_string(),
+                // Jupiter Aggregator V6
+                "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4".to_string(),
             ],
         }
     }
