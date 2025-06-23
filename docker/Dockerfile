@@ -1,5 +1,5 @@
 # Multi-stage Dockerfile for Bitquery Solana Kafka Consumer
-FROM rust:1.70-slim as builder
+FROM rust:1.70-slim AS builder
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -9,28 +9,39 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app user
-RUN useradd --create-home --shell /bin/bash app
-
 # Set working directory
 WORKDIR /app
 
-# Copy dependency manifests
+# Copy dependency manifests for all workspace members
 COPY Cargo.toml Cargo.lock ./
-COPY shared/ ./shared/
-COPY streams/ ./streams/
+COPY core/Cargo.toml ./core/
+COPY tools/Cargo.toml ./tools/
+
+# Create dummy source files for dependency caching
+RUN mkdir -p src core/src tools/src && \
+    echo "fn main() {}" > src/main.rs && \
+    echo "fn main() {}" > core/src/lib.rs && \
+    echo "fn main() {}" > tools/src/lib.rs
 
 # Build dependencies (this layer will be cached)
-RUN cargo build --release --manifest-path streams/kafka/bitquery-solana-kafka/Cargo.toml
+RUN cargo build --release
 
-# Copy source code
-COPY streams/kafka/bitquery-solana-kafka/src ./streams/kafka/bitquery-solana-kafka/src
-COPY streams/kafka/bitquery-solana-kafka/examples ./streams/kafka/bitquery-solana-kafka/examples
-COPY streams/kafka/bitquery-solana-kafka/tests ./streams/kafka/bitquery-solana-kafka/tests
-COPY streams/kafka/bitquery-solana-kafka/benches ./streams/kafka/bitquery-solana-kafka/benches
+# Remove dummy files
+RUN rm -rf src core/src tools/src
+
+# Copy all source code
+COPY src ./src
+COPY core/src ./core/src
+COPY tools/src ./tools/src
+COPY examples ./examples
+COPY tests ./tests
+COPY benches ./benches
+
+# Copy build scripts
+COPY core/build.rs ./core/
 
 # Build application
-RUN cargo build --release --manifest-path streams/kafka/bitquery-solana-kafka/Cargo.toml
+RUN cargo build --release
 
 # Runtime stage
 FROM debian:bookworm-slim
@@ -51,11 +62,9 @@ WORKDIR /app
 
 # Copy binary from builder stage
 COPY --from=builder /app/target/release/bitquery-solana-kafka /usr/local/bin/
-COPY --from=builder /app/target/release/examples/ /usr/local/bin/examples/
 
-# Copy configuration files
-COPY deployment/configs/ ./config/
-COPY .env.example ./.env
+# Copy configuration files from new structure
+COPY config/ ./config/
 
 # Create directories for certificates and logs
 RUN mkdir -p certs logs && \
@@ -65,11 +74,11 @@ RUN mkdir -p certs logs && \
 USER app
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
 # Expose ports
 EXPOSE 8080 9090
 
-# Default command
-CMD ["/usr/local/bin/examples/dex_monitor"]
+# Set default command
+CMD ["bitquery-solana-kafka"]

@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  bitquery-kafka-prod:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: bitquery-solana-kafka-prod
+    restart: unless-stopped
+    
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    
+    # Environment configuration
+    env_file:
+      - ../config/default.env
+      - ../config/production.env
+      - ../config/docker.env
+    
+    # Volumes for certificates and data persistence
+    volumes:
+      - ../certs:/app/certs:ro
+      - kafka_logs:/app/logs
+      - kafka_data:/app/data
+    
+    # Network ports
+    ports:
+      - "8080:8080"  # Health check
+      - "9090:9090"  # Prometheus metrics
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+    
+    # Security
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/tmp
+
+volumes:
+  kafka_logs:
+    driver: local
+  kafka_data:
+    driver: local
+
+networks:
+  default:
+    name: bitquery-kafka-prod
+    driver: bridge
