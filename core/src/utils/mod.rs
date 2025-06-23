@@ -16,6 +16,8 @@ pub mod base58_cache;
 pub mod deduplicator;
 /// Circuit breaker pattern for fault tolerance
 pub mod circuit_breaker;
+/// Advanced SDK-style circuit breaker with comprehensive features
+pub mod circuit_breaker_sdk;
 /// Retry mechanisms with exponential backoff
 pub mod retry;
 /// Metrics collection and timing utilities
@@ -26,5 +28,6 @@ pub use compression::{decompress_lz4, decompress_safe};
 pub use base58_cache::Base58Cache;
 pub use deduplicator::MessageDeduplicator;
 pub use circuit_breaker::CircuitBreaker;
+pub use circuit_breaker_sdk::{CircuitBreakerSdk, CircuitBreakerConfig, CircuitState, CircuitBreakerError, CircuitBreakerMetrics};
 pub use retry::RetryStrategy;
 pub use metrics::{Timer, record_event_processed, record_batch_processed};

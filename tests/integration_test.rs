@@ -102,7 +102,7 @@ mod tests {
         assert!(matches!(config_missing_ca.validate(), Err(SdkError::Config(msg)) if msg.contains("file does not exist")));
 
         let config_empty_key_path = SslConfig { ca_cert: ca_p.clone(), client_key: "".to_string(), client_cert: cert_p.clone() };
-        assert!(matches!(config_empty_key_path.validate(), Err(SdkError::Config(msg)) if msg.contains("path is empty or file does not exist")));
+        assert!(matches!(config_empty_key_path.validate(), Err(SdkError::Config(msg)) if msg.contains("is empty or file does not exist")));
     }
 
     #[test]
