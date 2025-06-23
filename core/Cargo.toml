@@ -2,7 +2,7 @@
 name = "bitquery-solana-core"
 version = "1.0.0"
 edition = "2021"
-authors = ["Zolca Team"]
+authors = ["Zola Team"]
 description = "Shared core functionality for Bitquery Solana SDKs"
 license = "MIT OR Apache-2.0"
 keywords = ["blockchain", "solana", "bitquery", "core"]

@@ -61,7 +61,7 @@ RUN useradd --create-home --shell /bin/bash --uid 1000 app
 WORKDIR /app
 
 # Copy binary from builder stage
-COPY --from=builder /app/target/release/bitquery-solana-kafka /usr/local/bin/
+COPY --from=builder /app/target/release/zola-streams /usr/local/bin/
 
 # Copy configuration files from new structure
 COPY config/ ./config/
@@ -81,4 +81,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE 8080 9090
 
 # Set default command
-CMD ["bitquery-solana-kafka"]
+CMD ["zola-streams"]

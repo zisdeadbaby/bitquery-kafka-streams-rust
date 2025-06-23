@@ -43,7 +43,7 @@ This service provides a production-ready Kafka streaming solution specifically d
    ```bash
    # Clone the repository
    git clone <repository-url>
-   cd bitquery-solana-kafka
+   cd zola-streams
    
    # Configure environment
    cp config/default.env config/local.env
@@ -81,7 +81,7 @@ This service provides a production-ready Kafka streaming solution specifically d
    # Edit .env with your configuration
    
    # Run the service
-   ./target/release/bitquery-solana-kafka
+   ./target/release/zola-streams
    ```
 
 ## Configuration
@@ -139,7 +139,7 @@ cargo run --example basic_consumer
 
 ### Project Structure
 ```
-bitquery-solana-kafka/
+zola-streams/
 ├── src/                    # Main service source
 ├── core/                   # Shared core utilities
 ├── tools/                  # Testing and debugging tools

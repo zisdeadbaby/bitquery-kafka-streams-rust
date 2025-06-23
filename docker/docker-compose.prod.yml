@@ -5,7 +5,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: bitquery-solana-kafka-prod
+    container_name: zola-streams-prod
     restart: unless-stopped
     
     # Production resource limits

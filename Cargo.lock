@@ -195,44 +195,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bitquery-solana-kafka"
-version = "2.0.0"
-dependencies = [
- "anyhow",
- "async-channel",
- "async-trait",
- "bitquery-solana-core",
- "bs58",
- "bytes",
- "chrono",
- "criterion",
- "crossbeam-channel",
- "futures",
- "hex",
- "jemallocator",
- "lru",
- "metrics",
- "mockall",
- "num_cpus",
- "once_cell",
- "parking_lot",
- "prost",
- "prost-build",
- "rdkafka",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror",
- "tokio",
- "tokio-stream",
- "tokio-test",
- "tracing",
- "tracing-subscriber",
- "uuid",
- "warp",
-]
-
-[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2912,4 +2874,42 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "zola-streams"
+version = "2.0.0"
+dependencies = [
+ "anyhow",
+ "async-channel",
+ "async-trait",
+ "bitquery-solana-core",
+ "bs58",
+ "bytes",
+ "chrono",
+ "criterion",
+ "crossbeam-channel",
+ "futures",
+ "hex",
+ "jemallocator",
+ "lru",
+ "metrics",
+ "mockall",
+ "num_cpus",
+ "once_cell",
+ "parking_lot",
+ "prost",
+ "prost-build",
+ "rdkafka",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tokio-test",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "warp",
 ]

@@ -23,7 +23,7 @@ The service can be deployed in several ways:
 1. **Clone and Configure**:
    ```bash
    git clone <repository-url>
-   cd bitquery-solana-kafka
+   cd zola-streams
    
    # Copy and edit configuration
    cp config/default.env config/local.env
@@ -325,8 +325,8 @@ spec:
    cargo build --release
    
    # Install binary
-   sudo cp target/release/bitquery-solana-kafka /usr/local/bin/
-   sudo chmod +x /usr/local/bin/bitquery-solana-kafka
+   sudo cp target/release/zola-streams /usr/local/bin/
+   sudo chmod +x /usr/local/bin/zola-streams
    ```
 
 4. **Configure Service**:
@@ -353,7 +353,7 @@ spec:
    Type=simple
    User=bitquery-kafka
    Group=bitquery-kafka
-   ExecStart=/usr/local/bin/bitquery-solana-kafka
+   ExecStart=/usr/local/bin/zola-streams
    EnvironmentFile=/etc/bitquery-kafka/production.env
    Restart=always
    RestartSec=5
@@ -411,10 +411,10 @@ The service validates configuration at startup:
 
 ```bash
 # Test configuration
-./bitquery-solana-kafka --config-check
+./zola-streams --config-check
 
 # Dry run
-./bitquery-solana-kafka --dry-run
+./zola-streams --dry-run
 ```
 
 ## Monitoring Setup

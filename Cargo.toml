@@ -1,11 +1,11 @@
 [package]
-name = "bitquery-solana-kafka"
+name = "zola-streams"
 version = "2.0.0"
 edition = "2021"
-authors = ["Zolca Team"]
+authors = ["Zola Team"]
 description = "High-performance Kafka streaming client for Bitquery Solana data with enhanced features"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/zolca/bitquery-solana-kafka"
+repository = "https://github.com/zola/zola-streams"
 keywords = ["blockchain", "solana", "kafka", "streaming", "bitquery"]
 categories = ["api-bindings", "asynchronous", "network-programming"]
 

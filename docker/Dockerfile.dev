@@ -47,7 +47,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy binary and config
-COPY --from=builder /app/target/release/bitquery-solana-kafka /usr/local/bin/
+COPY --from=builder /app/target/release/zola-streams /usr/local/bin/
 COPY --from=builder /app/config/ ./config/
 
 # Create non-root user
@@ -62,4 +62,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 EXPOSE 8080 9090
 
-CMD ["bitquery-solana-kafka"]
+CMD ["zola-streams"]

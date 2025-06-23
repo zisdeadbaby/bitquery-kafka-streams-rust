@@ -484,13 +484,13 @@ Some settings are validated during runtime:
 ### Configuration Testing
 ```bash
 # Test configuration without starting the service
-./bitquery-solana-kafka --config-check
+./zola-streams --config-check
 
 # Validate specific environment file
-./bitquery-solana-kafka --config-file config/production.env --validate
+./zola-streams --config-file config/production.env --validate
 
 # Dry run with full validation
-./bitquery-solana-kafka --dry-run
+./zola-streams --dry-run
 ```
 
 ## Security Best Practices

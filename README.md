@@ -9,7 +9,7 @@ A high-performance, production-ready Kafka streaming client specifically designe
 ```bash
 # Clone and configure
 git clone <repository-url>
-cd bitquery-solana-kafka
+cd zola-streams
 
 # Set up configuration
 cp config/default.env config/local.env
@@ -33,7 +33,7 @@ sudo apt-get install pkg-config libssl-dev libsasl2-dev
 cargo build --release
 cp config/default.env .env
 # Edit .env with your configuration
-./target/release/bitquery-solana-kafka
+./target/release/zola-streams
 ```
 
 ## ✨ Features
@@ -65,7 +65,7 @@ cp config/default.env .env
 ## 📁 Project Structure
 
 ```
-bitquery-solana-kafka/
+zola-streams/
 ├── src/                    # Main service source code
 │   ├── lib.rs             # Library entry point
 │   ├── client.rs          # Kafka client implementation
