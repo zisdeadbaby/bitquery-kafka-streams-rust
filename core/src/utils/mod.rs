@@ -22,7 +22,7 @@ pub mod retry;
 pub mod metrics;
 
 // Re-export commonly used utilities
-pub use compression::decompress_lz4;
+pub use compression::{decompress_lz4, decompress_safe};
 pub use base58_cache::Base58Cache;
 pub use deduplicator::MessageDeduplicator;
 pub use circuit_breaker::CircuitBreaker;

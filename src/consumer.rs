@@ -4,7 +4,7 @@ use crate::{
     events::{SolanaEvent, EventType},
     filters::EventFilter,
     resource_manager::ResourceManager,
-    utils::{decompress_lz4, metrics as sdk_metrics},
+    utils::{decompress_safe, metrics as sdk_metrics},
 };
 use bitquery_solana_core::schemas::{BlockMessage, DexParsedBlockMessage, TokenBlockMessage};
 use bytes::Bytes; // For handling protobuf `bytes` fields
@@ -18,6 +18,7 @@ use std::sync::Arc;
 use std::time::Duration; // For sleep durations
 use tokio::sync::Mutex as TokioMutex; // Tokio's Mutex for async-compatible locking
 use tracing::{debug, error, info, trace, warn}; // Logging macros
+use hex; // For encoding bytes to hex strings
 
 /// `StreamConsumer` wraps the `rdkafka::StreamConsumer` to provide a tailored experience
 /// for consuming Solana event data from Bitquery's Kafka streams.
@@ -177,19 +178,32 @@ impl StreamConsumer {
         trace!("StreamConsumer: Internally processing message. Topic: '{}', Partition: {}, Offset: {}, Size: {} bytes",
             topic, kafka_msg.partition(), kafka_msg.offset(), payload.len());
 
+        // Debug: Look at the first few bytes to understand the format
+        if payload.len() >= 16 {
+            let first_bytes: Vec<String> = payload[..16].iter().map(|b| format!("{:02x}", b)).collect();
+            debug!("Raw message header (first 16 bytes): {}", first_bytes.join(" "));
+        }
+
         #[cfg(feature = "metrics")] // Record raw message received from Kafka
         sdk_metrics::counter!("bitquery_sdk_kafka_messages_raw_total", 1, "topic" => topic.to_string());
         #[cfg(feature = "metrics")]
         sdk_metrics::histogram!("bitquery_sdk_kafka_message_raw_size_bytes", payload.len() as f64, "topic" => topic.to_string());
 
-        // Decompress payload (assuming LZ4)
-        let decompressed_payload = match decompress_lz4(payload) {
-            Ok(dp) => dp,
-            Err(e) => {
-                error!("LZ4 decompression failed for message on topic '{}': {}", topic, e);
-                return Err(Error::Other(format!("Compression error: {}", e))); // Wrap compression error
-            }
-        };
+        // Try multiple decompression approaches safely
+        let decompressed_payload = decompress_safe(payload);
+        
+        // Debug: Show first few bytes of processed data
+        if decompressed_payload.len() >= 32 {
+            let first_bytes: Vec<String> = decompressed_payload[..32].iter().map(|b| format!("{:02x}", b)).collect();
+            debug!("Processed data header (first 32 bytes): {}", first_bytes.join(" "));
+        }
+        
+        if decompressed_payload.len() != payload.len() {
+            debug!("Successfully decompressed message on topic '{}', size: {} -> {}", topic, payload.len(), decompressed_payload.len());
+        } else {
+            trace!("Using raw payload for message on topic '{}', size: {}", topic, payload.len());
+        }
+        
         let decompressed_bytes = Bytes::from(decompressed_payload); // `Bytes` for efficient Prost decoding
 
         // Parse Protobuf based on topic
@@ -254,20 +268,33 @@ impl StreamConsumer {
             // Logic to select ONE transaction to represent this BlockMessage as a SolanaEvent.
             // The prompt's version implies taking the *first successful* transaction.
             for tx in msg.transactions {
-                if tx.success { // Process only successful transactions
-                    return Ok(SolanaEvent {
-                        event_type: EventType::Transaction,
-                        slot: header.slot as u64,
-                        signature: tx.signature.clone(),
-                        timestamp: header.block_time.clone(),
-                        data: serde_json::json!({
-                            "signer": tx.signer,
-                            "fee": tx.fee,
-                            "instructions_count": tx.instructions.len(),
-                            "accounts_count": tx.accounts.len(),
-                            "logs": tx.logs, // Caution: logs can be very large.
-                        }),
-                    });
+                if let Some(status) = &tx.status {
+                    if status.success { // Process only successful transactions
+                        // Convert bytes signature to hex string for JSON compatibility
+                        let signature_hex = hex::encode(&tx.signature);
+                        
+                        // Extract signer and fee from transaction header if available
+                        let (signer, fee, accounts_count) = if let Some(tx_header) = &tx.header {
+                            let signer_hex = hex::encode(&tx_header.fee_payer);
+                            (signer_hex, tx_header.fee.to_string(), tx_header.accounts.len())
+                        } else {
+                            ("unknown".to_string(), "0".to_string(), 0)
+                        };
+                        
+                        return Ok(SolanaEvent {
+                            event_type: EventType::Transaction,
+                            slot: header.slot,
+                            signature: signature_hex,
+                            timestamp: header.timestamp.to_string(),
+                            data: serde_json::json!({
+                                "signer": signer,
+                                "fee": fee,
+                                "instructions_count": tx.instructions.len(),
+                                "accounts_count": accounts_count,
+                                "logs": tx.logs, // Caution: logs can be very large.
+                            }),
+                        });
+                    }
                 }
             }
         }
@@ -277,20 +304,41 @@ impl StreamConsumer {
 
     fn parse_token_message_content(&self, msg: TokenBlockMessage) -> SdkResult<SolanaEvent> {
         if let Some(header) = msg.header {
-            if let Some(transfer) = msg.transfers.first() { // Select the first transfer
-                return Ok(SolanaEvent {
-                    event_type: EventType::TokenTransfer,
-                    slot: header.slot as u64,
-                    signature: transfer.signature.clone(), // Assuming TokenTransfer has a signature
-                    timestamp: transfer.block_time.clone(),
-                    data: serde_json::json!({
-                        "from_account": transfer.from,
-                        "to_account": transfer.to,
-                        "mint": transfer.mint,
-                        "amount": transfer.amount.to_string(), // Convert amount to string for precision
-                        "decimals": transfer.decimals,
-                    }),
-                });
+            // Look for transactions with transfers
+            for tx in msg.transactions {
+                if let Some(transfer) = tx.transfers.first() { // Select the first transfer
+                    // Convert bytes signature to hex string
+                    let signature_hex = hex::encode(&tx.signature);
+                    
+                    // Handle optional fields safely
+                    let from_account = transfer.sender.as_ref()
+                        .map(|acc| hex::encode(&acc.address))
+                        .unwrap_or_else(|| "unknown".to_string());
+                    
+                    let to_account = transfer.receiver.as_ref()
+                        .map(|acc| hex::encode(&acc.address))
+                        .unwrap_or_else(|| "unknown".to_string());
+                        
+                    let (mint_hex, decimals) = if let Some(currency) = &transfer.currency {
+                        (hex::encode(&currency.mint_address), currency.decimals)
+                    } else {
+                        ("unknown".to_string(), 0)
+                    };
+                    
+                    return Ok(SolanaEvent {
+                        event_type: EventType::TokenTransfer,
+                        slot: header.slot,
+                        signature: signature_hex,
+                        timestamp: header.timestamp.to_string(),
+                        data: serde_json::json!({
+                            "from_account": from_account,
+                            "to_account": to_account,
+                            "mint": mint_hex,
+                            "amount": transfer.amount.to_string(), // Convert amount to string for precision
+                            "decimals": decimals,
+                        }),
+                    });
+                }
             }
         }
         Err(Error::Processing("No transfers found in TokenBlockMessage to form a SolanaEvent.".to_string()))
@@ -298,25 +346,66 @@ impl StreamConsumer {
 
     fn parse_dex_message_content(&self, msg: DexParsedBlockMessage) -> SdkResult<SolanaEvent> {
         if let Some(header) = msg.header {
-            if let Some(trade) = msg.trades.first() { // Select the first DEX trade
-                return Ok(SolanaEvent {
-                    event_type: EventType::DexTrade,
-                    slot: header.slot as u64,
-                    signature: trade.signature.clone(),
-                    timestamp: trade.block_time.clone(),
-                    data: serde_json::json!({
-                        "program_id": trade.program_id, // Ensure SolanaEvent::program_id() uses this
-                        "market_address": trade.market,
-                        "side": trade.side,
-                        "price": trade.price, // Price and amounts as strings for precision
-                        "amount_base": trade.amount_base,
-                        "amount_quote": trade.amount_quote,
-                        "base_mint": trade.base_mint,
-                        "quote_mint": trade.quote_mint,
-                        "maker": trade.maker,
-                        "taker": trade.taker,
-                    }),
-                });
+            // Look for transactions with DEX trades
+            for tx in msg.transactions {
+                if let Some(trade) = tx.trades.first() { // Select the first DEX trade
+                    let signature_hex = hex::encode(&tx.signature);
+                    
+                    // Extract trade information
+                    let program_id = trade.dex.as_ref()
+                        .map(|dex| hex::encode(&dex.program_address))
+                        .unwrap_or_else(|| "unknown".to_string());
+                        
+                    let market_address = trade.market.as_ref()
+                        .map(|market| hex::encode(&market.market_address))
+                        .unwrap_or_else(|| "unknown".to_string());
+                    
+                    let (base_mint, quote_mint) = if let Some(market) = &trade.market {
+                        let base = market.base_currency.as_ref()
+                            .map(|c| hex::encode(&c.mint_address))
+                            .unwrap_or_else(|| "unknown".to_string());
+                        let quote = market.quote_currency.as_ref()
+                            .map(|c| hex::encode(&c.mint_address))
+                            .unwrap_or_else(|| "unknown".to_string());
+                        (base, quote)
+                    } else {
+                        ("unknown".to_string(), "unknown".to_string())
+                    };
+                    
+                    // Extract buy and sell side information
+                    let (amount_base, amount_quote, maker, taker) = if let (Some(buy_side), Some(sell_side)) = (&trade.buy, &trade.sell) {
+                        let buy_amount = buy_side.amount.to_string();
+                        let sell_amount = sell_side.amount.to_string();
+                        let maker_addr = buy_side.account.as_ref()
+                            .map(|acc| hex::encode(&acc.address))
+                            .unwrap_or_else(|| "unknown".to_string());
+                        let taker_addr = sell_side.account.as_ref()
+                            .map(|acc| hex::encode(&acc.address))
+                            .unwrap_or_else(|| "unknown".to_string());
+                        (buy_amount, sell_amount, maker_addr, taker_addr)
+                    } else {
+                        ("0".to_string(), "0".to_string(), "unknown".to_string(), "unknown".to_string())
+                    };
+                    
+                    return Ok(SolanaEvent {
+                        event_type: EventType::DexTrade,
+                        slot: header.slot,
+                        signature: signature_hex,
+                        timestamp: header.timestamp.to_string(),
+                        data: serde_json::json!({
+                            "program_id": program_id,
+                            "market_address": market_address,
+                            "amount_base": amount_base,
+                            "amount_quote": amount_quote,
+                            "base_mint": base_mint,
+                            "quote_mint": quote_mint,
+                            "maker": maker,
+                            "taker": taker,
+                            "fee": trade.fee.to_string(),
+                            "royalty": trade.royalty.to_string(),
+                        }),
+                    });
+                }
             }
         }
         Err(Error::Processing("No DEX trades found in DexParsedBlockMessage to form a SolanaEvent.".to_string()))
