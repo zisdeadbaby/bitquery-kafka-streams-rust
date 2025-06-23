@@ -1,4 +1,4 @@
-use bitquery_solana_kafka::{
+use zola_streams::{
     // SDK Initialization
     init_with_config, InitConfig,
     // Core Client & Configuration

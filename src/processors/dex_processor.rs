@@ -177,13 +177,6 @@ mod tests {
         }
     }
 
-    // Remove unused struct fields from test events if any (none found in current code)
-    // All fields in SolanaEvent are used in tests, so no changes needed for unused fields.
-    // If you see a warning about an unused field, it may be from a different test or struct.
-    // If you want to silence warnings globally, you can add:
-    // #![allow(dead_code)]
-    // at the top of this test module, but this is not recommended unless necessary.
-
     #[test]
     fn dex_processor_filters_by_event_type() {
         let processor = DexProcessor::default();

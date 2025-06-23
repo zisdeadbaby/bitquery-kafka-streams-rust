@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use bitquery_solana_kafka::BitqueryClient;
+use zola_streams::BitqueryClient;
 use tokio::time::{interval, Duration};
 use tracing::{info, error};
 

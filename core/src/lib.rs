@@ -10,7 +10,14 @@
 //! - Common error types
 //! - Metrics utilities
 
+// Strict linting configuration
 #![warn(missing_docs)]
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::cargo)]
+#![warn(unused_imports)]
+#![warn(unused_variables)]
+#![warn(dead_code)]
 
 // Conditional compilation for high-performance features
 #[cfg(feature = "high-performance")]

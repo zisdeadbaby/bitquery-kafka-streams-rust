@@ -22,7 +22,7 @@ impl Base58Cache {
     ///
     /// # Arguments
     /// * `max_size`: The maximum number of entries to store in each cache.
-    ///               If `max_size` is 0, a default size (e.g., 1000) is used.
+    ///   If `max_size` is 0, a default size (e.g., 1000) is used.
     pub fn new(max_size: usize) -> Self {
         // Ensure NonZeroUsize, as LruCache requires it. Default to a reasonable size if 0.
         let nz_max_size = NonZeroUsize::new(max_size)

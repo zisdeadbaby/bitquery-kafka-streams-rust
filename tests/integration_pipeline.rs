@@ -1,5 +1,5 @@
 use testcontainers::{clients, images, Run};
-use bitquery_solana_kafka::Config as SdkConfig;
+use zola_streams::Config as SdkConfig;
 
 // Dummy testcontainers mock
 mod testcontainers {
@@ -35,6 +35,6 @@ async fn test_full_pipeline() {
     let mut config = SdkConfig::default();
     config.kafka.brokers = vec![kafka.get_host_port_ipv4(9093).to_string()];
     // Run test scenario
-    let _client = bitquery_solana_kafka::BitqueryClient::new(config).await.unwrap();
+    let _client = zola_streams::BitqueryClient::new(config).await.unwrap();
     // ... test processing
 }

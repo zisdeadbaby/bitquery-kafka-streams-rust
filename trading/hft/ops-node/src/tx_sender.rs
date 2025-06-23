@@ -20,16 +20,8 @@ use tokio::sync::Semaphore;
 use tonic::transport::Channel as TonicChannel; // For Jito client
 
 const RECENT_PRIORITY_FEES_ACCOUNTS_LIMIT: usize = 128; // Solana limit for getRecentPriorityFees
-#[allow(dead_code)]
-const DEFAULT_COMPUTE_UNITS: u32 = 200_000; // Fallback compute units
 const MAX_COMPUTE_UNITS: u32 = 1_400_000; // Max allowable compute units
 const COMPUTE_UNIT_ESTIMATION_BUFFER_PERCENT: f64 = 0.15; // 15% buffer for simulation
-#[allow(dead_code)]
-const JITO_TIP_ACCOUNTS: [&str; 3] = [ // Jito tip accounts
-    "96gYZGLnJYVFmbjzopPSU6QiEV5fGq5deL4ccVNZGSFV",
-    "HFqU5x63VTqvQss8hp11i4wVV8tb4LsUajnpVa㈜FH4", // Typo in original, assuming JitoPayer
-    "Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY",
-];
 
 
 pub struct TransactionSender {

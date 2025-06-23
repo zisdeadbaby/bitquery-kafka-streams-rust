@@ -4,7 +4,14 @@
 //! from Bitquery's Kafka streams, featuring advanced resource management, batch processing,
 //! and event filtering capabilities.
 
-#![warn(missing_docs)] // Enforce documentation for all public items
+// Strict linting configuration
+#![warn(missing_docs)]
+#![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::cargo)]
+#![warn(unused_imports)]
+#![warn(unused_variables)]
+#![warn(dead_code)]
 
 // Conditional compilation for Jemalloc global allocator via "high-performance" feature
 #[cfg(feature = "high-performance")]
