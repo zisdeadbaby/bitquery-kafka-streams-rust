@@ -233,25 +233,32 @@ impl BitqueryClient {
         rd_kafka_client_config
             .set("bootstrap.servers", &kafka_brokers_str)
             .set("group.id", &kafka_settings.group_id)
-            .set("security.protocol", "SASL_SSL") // Defaulting to SASL_SSL
-            .set("sasl.mechanisms", "SCRAM-SHA-512") // Common mechanism
+            .set("sasl.mechanism", "SCRAM-SHA-512") // Common mechanism for Bitquery
             .set("sasl.username", &kafka_settings.username)
             .set("sasl.password", &kafka_settings.password) // Password is now plain String
-            .set("ssl.ca.location", &kafka_settings.ssl.ca_cert)
-            .set("ssl.key.location", &kafka_settings.ssl.client_key)
-            .set("ssl.certificate.location", &kafka_settings.ssl.client_cert)
-            // Prompt's client.rs has "none" for endpoint identification.
-            // This disables hostname verification. For production, "https" is strongly recommended.
-            // User must be aware if using default config with "none".
-            .set("ssl.endpoint.identification.algorithm", "none")
             .set("auto.offset.reset", &kafka_settings.auto_offset_reset)
             .set("enable.auto.commit", "false") // Manual offset commit handled by StreamConsumer
             .set("session.timeout.ms", kafka_settings.session_timeout.as_millis().to_string())
             // Standard Kafka consumer properties for flow control and fetching behavior:
             .set("max.partition.fetch.bytes", (1024 * 1024).to_string()) // 1MB per partition fetch
             .set("fetch.min.bytes", "1") // Respond as soon as any data is available
-            .set("fetch.max.wait.ms", "500") // Max time to block for fetch.min.bytes
+            .set("fetch.wait.max.ms", "500") // Max time to block for fetch.min.bytes
             .set("partition.assignment.strategy", &kafka_settings.partition_assignment_strategy);
+
+        // Configure SSL if enabled
+        if kafka_settings.enable_ssl {
+            info!("Configuring SSL/TLS encryption for Kafka connection");
+            rd_kafka_client_config
+                .set("security.protocol", "SASL_SSL")
+                .set("ssl.ca.location", &kafka_settings.ssl.ca_cert)
+                .set("ssl.key.location", &kafka_settings.ssl.client_key)
+                .set("ssl.certificate.location", &kafka_settings.ssl.client_cert)
+                // This disables hostname verification. For production, "https" is recommended.
+                .set("ssl.endpoint.identification.algorithm", "none");
+        } else {
+            info!("Using SASL-only authentication (no SSL encryption)");
+            rd_kafka_client_config.set("security.protocol", "SASL_PLAINTEXT");
+        }
 
         // `max.poll.records` from KafkaConfig is a higher-level concept not directly mapped
         // to a single rdkafka property for StreamConsumer. Flow control is managed by byte sizes

@@ -26,6 +26,7 @@ bytes = { workspace = true }
 
 # Compression
 lz4_flex = { workspace = true }
+flate2 = "1.0"
 
 # Encoding
 bs58 = { workspace = true }

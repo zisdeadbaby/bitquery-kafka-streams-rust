@@ -78,6 +78,8 @@ pub struct KafkaConfig {
     pub password: String,
     /// A list of Kafka topics to subscribe to.
     pub topics: Vec<String>,
+    /// Whether to enable SSL/TLS encryption for Kafka connection.
+    pub enable_ssl: bool,
     /// SSL configuration for secure connection to Kafka.
     pub ssl: SslConfig,
     /// Session timeout for the Kafka consumer.
@@ -107,6 +109,7 @@ impl KafkaConfig {
             username,
             password,
             group_id: final_group_id,
+            enable_ssl: false, // Use Bitquery's preferred SASL_PLAINTEXT method
             ..Default::default() // Populate other fields from default
         }
     }
@@ -130,7 +133,10 @@ impl KafkaConfig {
         if self.topics.is_empty() {
              return Err(crate::Error::Config("Kafka topics list cannot be empty.".into()));
         }
-        self.ssl.validate()?; // Validate SSL sub-configuration
+        // Only validate SSL configuration if SSL is enabled
+        if self.enable_ssl {
+            self.ssl.validate()?; // Validate SSL sub-configuration
+        }
         Ok(())
     }
 }
@@ -142,9 +148,9 @@ impl Default for KafkaConfig {
     fn default() -> Self {
         Self {
             brokers: vec![
-                "rpk0.bitquery.io:9093".to_string(),
-                "rpk1.bitquery.io:9093".to_string(),
-                "rpk2.bitquery.io:9093".to_string(),
+                "rpk0.bitquery.io:9092".to_string(),
+                "rpk1.bitquery.io:9092".to_string(),
+                "rpk2.bitquery.io:9092".to_string(),
             ],
             // Prompt default: "solana_113-rust-sdk".
             // Making it slightly more unique by default if using Config::new might be better.
@@ -153,9 +159,11 @@ impl Default for KafkaConfig {
             username: "solana_113".to_string(), // As per prompt
             password: "cuDDLAUguo75blkNdbCBSHvNCK1udw".to_string(), // As per prompt
             topics: vec![
-                "solana.transactions.proto".to_string(),
-                "solana.dextrades.proto".to_string(),
+                "solana.transactions.proto".to_string(),  // All Solana transactions including pump.fun
+                "solana.dextrades.proto".to_string(),     // DEX trades including pump.fun trades
+                "solana.tokens.proto".to_string(),        // Token events including pump.fun token creation
             ],
+            enable_ssl: false, // Use Bitquery's preferred SASL_PLAINTEXT method
             ssl: SslConfig::default(),
             session_timeout: Duration::from_secs(30),
             auto_offset_reset: "latest".to_string(),

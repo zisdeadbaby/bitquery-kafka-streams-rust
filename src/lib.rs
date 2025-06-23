@@ -39,6 +39,10 @@ pub mod processors;
 pub mod resource_manager;
 /// Utility functions and helper modules
 pub mod utils;
+/// Observability module for monitoring, metrics, health checks, and tracing
+pub mod observability;
+/// HTTP server for observability endpoints
+pub mod http_server;
 
 // Re-export key types and structs for convenient access by SDK users
 pub use batch_processor::BatchProcessor;
@@ -53,8 +57,9 @@ pub use filters::{EventFilter, FilterBuilder}; // For creating and applying filt
 pub use processors::{DexProcessor, EventProcessor, TransactionProcessor}; // Core processor trait and examples
 pub use resource_manager::ResourceManager;
 pub use bitquery_solana_core::schemas;
+pub use http_server::ObservabilityServer;
 
-use tracing::info; // Used for logging within initialization functions
+use ::tracing::info; // Used for logging within initialization functions
 
 /// The current version of the SDK, sourced from the `Cargo.toml` file at compile time.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

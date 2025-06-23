@@ -114,12 +114,14 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "fmt",
 
 # Metrics
 metrics = { workspace = true }
+metrics-exporter-prometheus = "0.15"
+
+# HTTP server for health/metrics endpoints
+warp = "0.3"
+hyper = "0.14"
 
 # Optional high-performance allocator
 jemallocator = { workspace = true, optional = true }
-
-# Health check example dependencies
-warp = "0.3"
 
 [dev-dependencies]
 num_cpus = "1.16"

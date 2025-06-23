@@ -1,5 +1,4 @@
 use crate::error::{Error, Result};
-use tracing::error;
 use flate2::read::GzDecoder;
 use std::io::Read;
 
@@ -57,21 +56,78 @@ pub fn decompress_safe(data: &[u8]) -> Vec<u8> {
         return data.to_vec();
     }
 
-    // Try LZ4 decompression first
-    if let Ok(decompressed) = decompress_lz4(data) {
-        tracing::trace!("Successfully decompressed LZ4 data: {} -> {} bytes", data.len(), decompressed.len());
-        return decompressed;
+    // Log the first few bytes for debugging compression detection
+    if data.len() >= 4 {
+        tracing::trace!("Decompress_safe: examining data, length: {}, first 4 bytes: {:02x} {:02x} {:02x} {:02x}", 
+                       data.len(), data[0], data[1], data[2], data[3]);
     }
 
-    // Try gzip decompression if LZ4 fails
-    if let Ok(decompressed) = decompress_gzip(data) {
-        tracing::trace!("Successfully decompressed gzip data: {} -> {} bytes", data.len(), decompressed.len());
-        return decompressed;
+    // Try LZ4 decompression first (only if it looks like LZ4)
+    if is_likely_lz4_compressed(data) {
+        tracing::trace!("Decompress_safe: attempting LZ4 decompression");
+        if let Ok(decompressed) = decompress_lz4(data) {
+            tracing::trace!("Successfully decompressed LZ4 data: {} -> {} bytes", data.len(), decompressed.len());
+            return decompressed;
+        } else {
+            tracing::trace!("LZ4 decompression failed, continuing with other methods");
+        }
+    } else {
+        tracing::trace!("Data does not appear to be LZ4 compressed");
+    }
+
+    // Try gzip decompression if LZ4 fails (only if it looks like gzip)
+    if is_likely_gzip_compressed(data) {
+        tracing::trace!("Decompress_safe: attempting gzip decompression");
+        if let Ok(decompressed) = decompress_gzip(data) {
+            tracing::trace!("Successfully decompressed gzip data: {} -> {} bytes", data.len(), decompressed.len());
+            return decompressed;
+        } else {
+            tracing::trace!("Gzip decompression failed, using raw data");
+        }
+    } else {
+        tracing::trace!("Data does not appear to be gzip compressed");
     }
 
     // If all decompression attempts fail, return original data
     tracing::trace!("No decompression applied, using raw data: {} bytes", data.len());
     data.to_vec()
+}
+
+/// Checks if data is likely gzip compressed by examining magic bytes and header structure.
+///
+/// Gzip files start with a specific magic number (0x1f, 0x8b) followed by compression method,
+/// flags, timestamp, extra flags, and OS identifier. This function performs more thorough
+/// validation to avoid false positives.
+fn is_likely_gzip_compressed(data: &[u8]) -> bool {
+    // Need at least 10 bytes for a minimal gzip header
+    if data.len() < 10 {
+        return false;
+    }
+    
+    // Check magic bytes (0x1f, 0x8b)
+    if data[0] != 0x1f || data[1] != 0x8b {
+        return false;
+    }
+    
+    // Check compression method (should be 8 for deflate)
+    if data[2] != 8 {
+        return false;
+    }
+    
+    // Check flags byte (bits 3-7 should be 0, reserved for future use)
+    let flags = data[3];
+    if (flags & 0xe0) != 0 {
+        return false;
+    }
+    
+    // Additional heuristic: very small payloads (< 20 bytes total) are unlikely to be valid gzip
+    // since gzip has significant header overhead
+    if data.len() < 20 {
+        return false;
+    }
+    
+    // If we reach here, the header structure looks valid for gzip
+    true
 }
 
 /// Checks if data is likely LZ4 compressed by examining its structure.
@@ -93,11 +149,19 @@ fn is_likely_lz4_compressed(data: &[u8]) -> bool {
         return false;
     }
     
-    // Allow both compressed and uncompressed data (uncompressed size can be <= compressed size for small data)
-    // This is more permissive than the previous check
-    
     // Additional heuristic: very small payloads (< 16 bytes total) are unlikely to have LZ4 header + data
     if data.len() < 16 {
+        return false;
+    }
+    
+    // More strict validation: the uncompressed size should be reasonable compared to compressed size
+    // For most real data, compression ratio should be between 0.1 and 10.0
+    let compressed_size = data.len() - 4; // Subtract 4 bytes for the size prefix
+    let compression_ratio = size_prefix as f64 / compressed_size as f64;
+    
+    // If the claimed uncompressed size is more than 10x the compressed size, it's suspicious
+    // If the claimed uncompressed size is less than 10% of compressed size, also suspicious
+    if compression_ratio > 10.0 || compression_ratio < 0.1 {
         return false;
     }
 
@@ -124,8 +188,9 @@ pub fn decompress_gzip(data: &[u8]) -> Result<Vec<u8>> {
     
     decoder.read_to_end(&mut decompressed)
         .map_err(|gzip_error| {
-            error!(
-                "Gzip decompression failed internally. Error: '{}'. Input data length: {}.",
+            // Log at debug level instead of error to reduce noise
+            tracing::debug!(
+                "Gzip decompression failed. Error: '{}'. Input data length: {}.",
                 gzip_error, data.len()
             );
             Error::Compression(format!("Gzip decompression error: {}", gzip_error))

@@ -1,0 +1,67 @@
+# Sample Configuration for ops-node
+# This file is typically named ops-node.toml and loaded by default,
+# or its path can be specified via the OPS_NODE_CONFIG environment variable.
+
+[network]
+# rpc_endpoint removed for streams-only repo
+wss_endpoint = "wss://api.mainnet-beta.solana.com"   # Example public WSS
+# For HFT, use high-performance, low-latency RPC providers like Triton, QuickNode, Helius, etc.
+# rpc_endpoint = "https://your-private-rpc-provider.com"
+# wss_endpoint = "wss://your-private-rpc-provider.com/ws"
+
+yellowstone_endpoint = "grpc://your-yellowstone-provider.com:443" # e.g., from Triton, GenesysGo (defunct), etc.
+jito_endpoint = "grpc://your-jito-blockengine.com:443" # e.g., Jito Labs block engine or a third-party provider
+# Ensure endpoints are correct (grpc:// or grpcs:// if TLS is handled by client, or http/https for some gRPC proxies)
+# The current gRPC client setup in Rust uses tonic's default TLS for `https://` like URLs,
+# or tries to connect directly for `grpc://`. Adjust if your provider needs specific TLS setup.
+
+connection_pool_size = 16 # Number of connections per gRPC endpoint (Yellowstone, Jito)
+request_timeout_ms = 5000 # Default timeout for RPC/gRPC requests
+
+[performance]
+# CPU cores to pin application threads to (Linux only).
+# Leave empty to not pin, or specify core IDs e.g., [2, 3, 4, 5]
+# Ensure these cores are isolated from other system tasks for best performance (isolcpus, nohz_full).
+cpu_cores = []
+
+memory_pool_size_mb = 256 # Size of bumpalo memory pool for general allocations
+max_concurrent_operations = 100 # Max concurrent operations (e.g., pending transactions, strategy evaluations)
+latency_threshold_ns = 1000000  # 1ms, for internal latency monitoring alerts (if implemented)
+use_io_uring = false # Enable io_uring for network operations (Linux only, requires kernel support & 'io_uring' feature)
+enable_huge_pages = false # Enable huge pages for memory pool (Linux only, requires system config & 'tsc' feature for memory.rs allocator)
+
+[trading]
+max_position_size_sol = 1.0 # Max SOL to use for a single position/trade
+min_liquidity_sol = 10.0  # Minimum liquidity (in SOL equivalent) for a token/pool to be considered
+max_slippage_bps = 100    # Max slippage in basis points (100bps = 1%)
+priority_fee_cap = 100000 # Max priority fee in micro-lamports (0.0001 SOL) per compute unit
+enable_jito_bundles = false # Whether to attempt sending transactions via Jito bundles
+tip_amount_lamports = 10000 # Additional tip for Jito bundles (if enable_jito_bundles is true)
+
+# Strategy specific configurations can be nested here if Config struct is adapted
+# [trading.token_sniper_v1]
+# take_profit_bps = 2500
+# stop_loss_bps = 800
+# min_score_threshold = 0.7
+
+[monitoring]
+metrics_port = 9090 # Port for Prometheus metrics server
+alert_webhook = "https_disabled://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN" # Optional Discord/Slack webhook for alerts
+log_level = "info,ops_node=debug" # Default RUST_LOG level if not set in environment
+enable_tracing = true # General flag, actual tracing setup is in main.rs
+
+[auth]
+# Yellowstone API Key/Token. Can be a direct string or an env var placeholder.
+# For env var: api_key = { env = "YELLOWSTONE_API_KEY" }
+# For direct string: api_key = "your_actual_api_key_here"
+api_key = "YOUR_YELLOWSTONE_TOKEN_OR_ENV_VAR_CONFIG" # This is for Yellowstone
+
+# Jito Authentication Token (if required by your Jito provider)
+# jito_auth_token = { env = "JITO_AUTH_TOKEN" }
+# jito_auth_token = "your_jito_auth_token_here"
+jito_auth_token = "YOUR_JITO_AUTH_TOKEN_OR_ENV_VAR_CONFIG_OPTIONAL" # This is often a bearer token for Jito gRPC
+
+# Path to the Solana keypair file for transactions and signing.
+private_key_path = "/path/to/your/solana/keypair.json"
+# Example: private_key_path = "~/.config/solana/id.json"
+# Ensure this path is correct and the file is readable by the ops-node process.

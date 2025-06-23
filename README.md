@@ -1,6 +1,44 @@
 # Bitquery Solana Kafka Streaming Service
 
-A high-performance, production-ready Kafka streaming client specifically designed for consuming and processing Solana blockchain data from Bitquery with advanced features and comprehensive monitoring.
+A high-performance, production-ready Kafka streaming client specifically designed for consuming and processing Solana blockchain data from Bitquery with advanced features and comprehensive monitoring. **Optimized for pump.fun and DEX trading data.**
+
+## 🎯 Pump.fun Support
+
+This service is specifically configured to capture **all pump.fun activity** including:
+
+- **Real-time Trades**: Live pump.fun trades with price updates
+- **Token Launches**: New token creation events and metadata  
+- **Market Data**: Trading volume, market cap, and price analytics
+- **Bonding Curve Tracking**: Monitor progression to Raydium graduation
+- **King of the Hill**: Track $69K market cap milestones
+
+See [PUMP_FUN_STREAMING.md](docs/PUMP_FUN_STREAMING.md) for detailed configuration.## 🔒 SSL Configuration
+
+Bitquery supports two connection methods:
+
+### SASL_PLAINTEXT (Recommended)
+- **Port**: 9092
+- **SSL Required**: No
+- **Simpler setup**, no certificate management needed
+
+### SASL_SSL (Alternative)  
+- **Port**: 9093
+- **SSL Required**: Yes
+- **Certificates needed** from Bitquery support
+
+⚠️ **Current Certificate Status**:
+- `certs/server.cer.pem` ✅ Real Bitquery CA certificate
+- `certs/client.cer.pem` ❌ Placeholder (need real certificate)
+- `certs/client.key.pem` ❌ Placeholder (need real certificate)
+
+📚 **See [SSL_CONFIGURATION.md](docs/SSL_CONFIGURATION.md) for complete SSL setup guide**
+
+### Quick Setup
+For immediate testing, use SASL_PLAINTEXT (no SSL):
+```bash
+export BITQUERY_USERNAME="your_username"
+export BITQUERY_PASSWORD="your_password"
+cargo runing Solana blockchain data from Bitquery with advanced features and comprehensive monitoring.
 
 ## 🚀 Quick Start
 
@@ -129,7 +167,34 @@ zola-streams/
 
 See [CONFIGURATION.md](docs/CONFIGURATION.md) for complete configuration options.
 
-## 🚀 Deployment
+## � SSL Certificates
+
+⚠️ **IMPORTANT**: For production use with Bitquery, you need valid SSL certificates.
+
+### Current Status
+The certificates in `certs/` are **placeholder certificates** for development/testing only. They will **NOT work** with Bitquery's production Kafka brokers.
+
+### Getting Production Certificates
+1. Contact Bitquery support (support@bitquery.io)
+2. Request SSL certificates for Kafka streaming access
+3. Replace the placeholder files in `certs/` with the provided certificates:
+   - `certs/server.cer.pem` - CA certificate
+   - `certs/client.cer.pem` - Client certificate  
+   - `certs/client.key.pem` - Client private key
+
+### Security
+```bash
+# Set proper permissions
+chmod 600 certs/client.key.pem
+chmod 644 certs/*.cer.pem
+
+# Never commit real certificates to version control
+echo "certs/*.pem" >> .gitignore
+```
+
+See [certs/README.md](certs/README.md) for detailed SSL certificate setup instructions.
+
+## �🚀 Deployment
 
 ### Development
 ```bash

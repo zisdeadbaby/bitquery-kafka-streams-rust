@@ -6,6 +6,11 @@ fn main() -> Result<()> {
         .bytes(["."])  // Enable bytes for Bytes fields in proto
         .type_attribute(".", "#[allow(missing_docs)]") // Suppress missing docs warnings for generated code
         .field_attribute(".", "#[allow(missing_docs)]") // Suppress missing docs warnings for generated fields
-        .compile_protos(&["src/schemas/solana.proto"], &["src/schemas/"])?;
+        .compile_protos(&[
+            "../schemas/block_message.proto",
+            "../schemas/token_block_message.proto", 
+            "../schemas/dex_block_message.proto",
+            "../schemas/parsed_idl_block_message.proto"
+        ], &["../schemas/"])?;
     Ok(())
 }
