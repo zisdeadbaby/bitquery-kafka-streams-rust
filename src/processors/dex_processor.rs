@@ -5,7 +5,7 @@ use crate::{
 };
 use super::EventProcessor; // The EventProcessor trait from processors/mod.rs
 use async_trait::async_trait;
-use tracing::{info, debug, warn, trace}; // Logging utilities
+use tracing::{debug, trace}; // Logging utilities
 
 /// `DexProcessor` is an `EventProcessor` specialized for handling `SolanaEvent`s
 /// that represent Decentralized Exchange (DEX) trades.
@@ -84,15 +84,83 @@ impl EventProcessor for DexProcessor {
 
         let calculated_usd_value = if price_val > 0.0 { amount_base_val * price_val } else { 0.0 };
 
-        info!(
-            "DEX Trade Processed by DexProcessor: Sig='{}', Program='{}', Market='{}', Side='{}', AmountBase={}, Price={}, ApproxValueUSD={:.2}",
-            signature, program_id, market_address, side, amount_base_val, price_val, calculated_usd_value
-        );
+        // Enhanced terminal presentation for Pump.fun trades
+        let is_pumpfun = program_id == "6EF8rrecthR5Dkzon8Nwu78hRvfgKubJ14M5uBEwF6P";
+        
+        // Update global statistics (simplified for demo)
+        static TOTAL_EVENTS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        static PUMPFUN_TRADES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        static OTHER_DEX_TRADES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        static LARGE_TRADES: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        
+        TOTAL_EVENTS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        
+        if is_pumpfun {
+            PUMPFUN_TRADES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        } else {
+            OTHER_DEX_TRADES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+        
+        if calculated_usd_value > 1000.0 {
+            LARGE_TRADES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+        
+        // Display statistics every 10 events
+        if TOTAL_EVENTS.load(std::sync::atomic::Ordering::Relaxed) % 10 == 0 {
+            let total = TOTAL_EVENTS.load(std::sync::atomic::Ordering::Relaxed);
+            let pumpfun_count = PUMPFUN_TRADES.load(std::sync::atomic::Ordering::Relaxed);
+            let other_count = OTHER_DEX_TRADES.load(std::sync::atomic::Ordering::Relaxed);
+            let large_count = LARGE_TRADES.load(std::sync::atomic::Ordering::Relaxed);
+            
+            println!("\n📊 Quick Stats: {} total | 🚀 {} Pump.fun | 🔄 {} Other DEX | 🐋 {} Large\n", 
+                total, pumpfun_count, other_count, large_count);
+        }
+        
+        if is_pumpfun {
+            // Special formatting for Pump.fun trades
+            let side_emoji = match side.to_lowercase().as_str() {
+                "buy" => "🟢 BUY",
+                "sell" => "🔴 SELL",
+                _ => "⚪ TRADE"
+            };
+            
+            let value_emoji = if calculated_usd_value > 10000.0 { "💰" }
+                            else if calculated_usd_value > 5000.0 { "💵" }
+                            else if calculated_usd_value > 1000.0 { "💲" }
+                            else { "🪙" };
+            
+            println!("\n┌─────────────────────────────────────────────────────────────────────────────────────");
+            println!("│ 🚀 PUMP.FUN TRADE DETECTED {}", value_emoji);
+            println!("├─────────────────────────────────────────────────────────────────────────────────────");
+            println!("│ {} {} | Value: ${:.2} USD", side_emoji, value_emoji, calculated_usd_value);
+            println!("│ 🏪 Market: {}", market_address);
+            println!("│ 💎 Amount: {:.6} SOL", amount_base_val);
+            println!("│ 💰 Price: ${:.8} USD", price_val);
+            println!("│ 📋 Signature: {}", &signature[..8]);
+            println!("│ ⏰ Time: {}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs());
+            println!("└─────────────────────────────────────────────────────────────────────────────────────\n");
+        } else {
+            // Standard formatting for other DEX trades
+            let side_indicator = match side.to_lowercase().as_str() {
+                "buy" => "📈",
+                "sell" => "📉",
+                _ => "🔄"
+            };
+            
+            println!("🔹 {} DEX Trade | {} ${:.2} | Market: {} | Sig: {}", 
+                side_indicator, side.to_uppercase(), calculated_usd_value, 
+                &market_address[..8], &signature[..8]);
+        }
 
-        // Further custom logic can be implemented here.
-        // For example, if `calculated_usd_value` is extremely high, send an alert.
-        if calculated_usd_value > 1_000_000.0 { // Example: Alert for million-dollar trades
-            warn!("Large DEX Trade Detected: Sig='{}', ValueUSD={:.2}", signature, calculated_usd_value);
+        // Alert for large trades
+        if calculated_usd_value > 1_000_000.0 {
+            println!("\n🚨🚨🚨 WHALE ALERT! 🐋 🚨🚨🚨");
+            println!("💥 MASSIVE TRADE: ${:.2} USD on {}", calculated_usd_value, 
+                if is_pumpfun { "PUMP.FUN" } else { "DEX" });
+            println!("🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨\n");
+        } else if calculated_usd_value > 100_000.0 {
+            println!("🐋 Big Trade Alert: ${:.2} USD {}", calculated_usd_value, 
+                if is_pumpfun { "on Pump.fun" } else { "" });
         }
 
         debug!("Full data for processed DEX trade (Sig: '{}'): {:?}", signature, event.data);

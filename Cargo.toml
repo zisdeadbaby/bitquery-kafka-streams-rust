@@ -57,6 +57,9 @@ once_cell = "1.19"
 parking_lot = "0.12"
 uuid = { version = "1.10.0", features = ["v4"] }
 
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
 # Logging and metrics
 tracing = "0.1"
 metrics = "0.23"
@@ -107,6 +110,9 @@ parking_lot = { workspace = true }
 uuid = { workspace = true }
 lru = { workspace = true }
 num_cpus = "1.16"
+
+# CLI
+clap = { version = "4.5", features = ["derive"] }
 
 # Logging
 tracing = { workspace = true }

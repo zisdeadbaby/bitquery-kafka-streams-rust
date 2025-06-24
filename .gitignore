@@ -31,3 +31,13 @@ logs/
 # Environment files with sensitive data (keep .env.example)
 .env.local
 .env.production
+
+# Production SSL certificates (never commit real certificates!)
+# Note: placeholder development certificates are intentionally tracked
+certs/*production*.pem
+certs/*real*.pem
+certs/*live*.pem
+# Only ignore if they contain actual production data:
+# certs/client.cer.pem
+# certs/client.key.pem
+# certs/server.cer.pem
