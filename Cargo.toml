@@ -13,7 +13,6 @@ categories = ["api-bindings", "asynchronous", "network-programming"]
 resolver = "2"
 members = [
     ".",
-    "core",
     "tools"
 ]
 
@@ -75,9 +74,6 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-# Shared core library
-bitquery-solana-core = { path = "./core" }
-
 # Kafka
 rdkafka = { workspace = true }
 
@@ -87,13 +83,19 @@ tokio-stream = { workspace = true }
 futures = { workspace = true }
 async-trait = { workspace = true }
 async-channel = { workspace = true }
-crossbeam-channel = "0.5"
+
+# Protobuf
+prost = { workspace = true }
+prost-types = { workspace = true }
 
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
 bytes = { workspace = true }
-prost = { workspace = true }
+
+# Compression (from core)
+lz4_flex = { workspace = true }
+flate2 = "1.0"
 
 # Encoding
 bs58 = { workspace = true }
@@ -102,6 +104,7 @@ hex = { workspace = true }
 # Error handling
 anyhow = { workspace = true }
 thiserror = { workspace = true }
+crossbeam-channel = "0.5"
 
 # Utilities
 chrono = { workspace = true }
@@ -124,7 +127,14 @@ metrics-exporter-prometheus = "0.15"
 
 # HTTP server for health/metrics endpoints
 warp = "0.3"
-hyper = "0.14"
+axum = "0.7"
+tower = "0.4"
+
+# Additional core dependencies
+fastrand = "2.0"
+
+# Health monitoring
+sysinfo = "0.31"
 
 # Optional high-performance allocator
 jemallocator = { workspace = true, optional = true }
@@ -138,7 +148,7 @@ tempfile = "3.8"
 
 [features]
 default = []
-high-performance = ["bitquery-solana-core/high-performance", "jemallocator"]
+high-performance = ["jemallocator"]
 metrics = []
 
 [build-dependencies]

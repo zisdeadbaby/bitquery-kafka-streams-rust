@@ -4,9 +4,10 @@ use crate::{
     events::{SolanaEvent, EventType},
     filters::EventFilter,
     resource_manager::ResourceManager,
-    utils::{decompress_safe, metrics as sdk_metrics},
+    utils::{metrics as sdk_metrics},
+    core::utils::compression::decompress_safe,
 };
-use bitquery_solana_core::schemas::{BlockMessage, DexParsedBlockMessage, TokenBlockMessage};
+use crate::core::schemas::{BlockMessage, DexParsedBlockMessage, TokenBlockMessage};
 use bytes::Bytes; // For handling protobuf `bytes` fields
 use prost::Message as ProstMessage; // Alias for prost's Message trait
 use rdkafka::{

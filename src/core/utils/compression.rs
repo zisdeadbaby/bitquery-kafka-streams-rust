@@ -1,4 +1,4 @@
-use crate::error::{Error, Result};
+use super::super::error::{Error, Result};
 use flate2::read::GzDecoder;
 use std::io::Read;
 

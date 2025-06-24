@@ -1,4 +1,4 @@
-use crate::error::{Error, Result};
+use crate::core::error::{Error, Result};
 use std::future::Future;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -141,7 +141,7 @@ mod tests {
     use std::time::Instant;
     use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
     use std::sync::Arc;
-    use crate::error::Error; // Import your SDK Error type
+    use crate::core::error::Error; // Import your SDK Error type
 
     // Dummy error type for testing
     #[derive(Debug, Clone)]

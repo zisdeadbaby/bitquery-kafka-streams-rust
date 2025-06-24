@@ -19,10 +19,7 @@
 #![warn(unused_variables)]
 #![warn(dead_code)]
 
-// Conditional compilation for high-performance features
-#[cfg(feature = "high-performance")]
-#[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+// Note: high-performance feature with jemalloc is now handled in main lib.rs
 
 pub mod error;
 pub mod utils;

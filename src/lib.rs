@@ -19,6 +19,8 @@
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 // Declare all public and internal modules of the SDK
+/// Core shared functionality (moved from separate crate)
+pub mod core;
 /// Batch processing functionality for efficient Kafka message handling
 pub mod batch_processor;
 /// Main client interface for interacting with Bitquery Solana services
@@ -56,7 +58,7 @@ pub use events::{SolanaEvent, EventType};
 pub use filters::{EventFilter, FilterBuilder}; // For creating and applying filters
 pub use processors::{DexProcessor, EventProcessor, TransactionProcessor}; // Core processor trait and examples
 pub use resource_manager::ResourceManager;
-pub use bitquery_solana_core::schemas;
+pub use core::schemas;
 pub use http_server::ObservabilityServer;
 
 use ::tracing::info; // Used for logging within initialization functions
