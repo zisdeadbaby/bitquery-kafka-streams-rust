@@ -1,4 +1,4 @@
-# Zola Streams - Bitquery Solana Kafka Streaming Service
+# Bitquery Solana Kafka Streaming Service
 
 A high-performance Kafka streaming client for Bitquery Solana data with specialized DEX transaction monitoring.
 

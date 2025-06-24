@@ -11,7 +11,7 @@
 //! - Metrics utilities
 
 // Strict linting configuration
-#![warn(missing_docs)]
+#![allow(missing_docs)]
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::cargo)]
